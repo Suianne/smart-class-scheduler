@@ -1,0 +1,96 @@
+Evidencias de testes do backend (Parte 1)
+Gerado em: 2026-10-26 20:25 -03 | Node v22.23.4
+Comando: npm test (node:test + supertest + PGlite, que executa o PostgreSQL real em memoria com os scripts sql/)
+
+▶ Autenticacao
+  ✔ login valido devolve sessao e perfil (105.345581ms)
+  ✔ e-mail e normalizado (caixa alta e espacos) (49.377593ms)
+  ✔ senha errada e e-mail inexistente recebem a mesma resposta 401 (42.688397ms)
+  ✔ login com corpo invalido retorna 400 (39.374407ms)
+  ✔ refresh devolve nova sessao; token invalido retorna 401 (38.098736ms)
+  ✔ /me identifica cada perfil (43.348353ms)
+  ✔ sem token, token malformado ou invalido retornam 401 (35.064836ms)
+  ✔ conta sem perfil no banco recebe 403 (34.87425ms)
+  ✔ conta desativada recebe 403 em qualquer rota e nao consegue logar (36.899754ms)
+  ✔ o perfil vem do banco, nao do corpo da requisicao (41.343733ms)
+✔ Autenticacao (3117.043831ms)
+▶ Dados de teste (seed)
+  ✔ atende ao minimo do cenario de validacao (3.61287ms)
+  ✔ carga semanal de cada turma cabe nas aulas disponiveis do turno (3.926177ms)
+✔ Dados de teste (seed) (2549.293687ms)
+▶ Cadastros academicos
+  ✔ qualquer perfil autenticado consulta disciplinas, salas, turmas e turnos (120.155618ms)
+  ✔ horarios dos turnos sao devolvidos em HH:MM e filtros funcionam (44.165266ms)
+  ✔ coordenador cria, atualiza e remove uma disciplina (66.7514ms)
+  ✔ cria sala, turno e periodo letivo com valores padrao (47.989921ms)
+  ✔ validacoes retornam 400 com detalhes por campo (41.133942ms)
+  ✔ duplicidade retorna 409 e vinculos impedem a exclusao (409) (51.269024ms)
+  ✔ vincula disciplina a turma e professor (41.970871ms)
+  ✔ aluno e professor nao alteram cadastros (403) (51.933302ms)
+  ✔ alteracoes de cadastro geram historico com antes e depois (52.577309ms)
+✔ Cadastros academicos (2202.537642ms)
+▶ Professores e alunos
+  ✔ coordenador cria professor: conta de acesso, usuario e perfil (42.758017ms)
+  ✔ coordenador cria aluno vinculado a uma turma (39.415537ms)
+  ✔ senha curta, perfil no corpo e e-mail invalido sao rejeitados (400) (39.71424ms)
+  ✔ e-mail repetido retorna 409; falha no banco desfaz a conta criada no Auth (43.478778ms)
+  ✔ aluno com turma inexistente retorna 409 e nao deixa lixo (34.663121ms)
+  ✔ lista, atualiza (incluindo desativar) e remove (55.880799ms)
+  ✔ somente coordenador gerencia pessoas (403) (47.500205ms)
+✔ Professores e alunos (2043.233792ms)
+▶ Relatorios
+  ✔ resumo geral disponivel somente ao coordenador (20.035974ms)
+✔ Relatorios (1797.683577ms)
+▶ Disponibilidade docente
+  ✔ cenario 2: professor registra disponibilidade apenas as segundas e quartas (123.413837ms)
+  ✔ professor so enxerga a propria disponibilidade (54.209731ms)
+  ✔ aluno nao acessa disponibilidades (403) (53.809606ms)
+  ✔ validacoes: dia, formato de hora, ordem e campos extras (71.322013ms)
+  ✔ sobreposicao no mesmo dia retorna 409; intervalos adjacentes sao aceitos (74.282247ms)
+  ✔ professor altera a propria disponibilidade durante a coleta (50.665932ms)
+  ✔ professor nao altera nem remove disponibilidade de outro professor (403) (43.42192ms)
+  ✔ professor nao cria disponibilidade em nome de outro (403) (33.998099ms)
+  ✔ coordenador registra e altera em nome de um professor (42.886082ms)
+  ✔ cenario 7: apos a publicacao, a alteracao fica pendente e a grade nao muda (75.243175ms)
+  ✔ coordenador aprova solicitacao: original vira substituida e a nova entra em vigor (58.389437ms)
+  ✔ coordenador rejeita solicitacao; professor nao aprova nem rejeita (403) (61.539597ms)
+  ✔ aprovacao que causaria sobreposicao e bloqueada (409) (41.588272ms)
+  ✔ com a coleta encerrada, a alteracao tambem fica pendente (37.66222ms)
+  ✔ toda alteracao e registrada no historico com usuario e valores (59.450258ms)
+  ✔ ids invalidos e inexistentes (57.936758ms)
+✔ Disponibilidade docente (3681.720855ms)
+▶ Consulta de horarios
+  ✔ sem versao publicada, o aluno recebe grade vazia (rascunho nao e oficial) (103.673954ms)
+  ✔ cenario 6: aluno ve apenas a grade publicada da propria turma (51.684423ms)
+  ✔ aluno nao consulta outra turma nem versoes de rascunho (55.548214ms)
+  ✔ professor ve a propria grade e as turmas atribuidas (48.343866ms)
+  ✔ professor so consulta turmas em que leciona (53.437084ms)
+  ✔ professor sem aulas publicadas recebe lista vazia, nao erro (43.456662ms)
+  ✔ coordenador consulta qualquer turma, professor e versao (inclusive rascunho) (87.690326ms)
+  ✔ o banco rejeita aulas conflitantes de professor, sala ou turma na mesma versao (40.360499ms)
+  ✔ somente uma versao publicada por periodo (36.600881ms)
+✔ Consulta de horarios (3080.814242ms)
+▶ Seguranca: autenticacao e autorizacao no backend
+  ✔ toda rota protegida exige autenticacao (401 sem token) (182.820887ms)
+  ✔ aluno e professor nunca executam rotas exclusivas do coordenador (203.345042ms)
+  ✔ aluno e professor nao conseguem alterar a grade, direto na API ou por outras rotas (79.302441ms)
+  ✔ token adulterado ou de outra origem e rejeitado (33.833597ms)
+  ✔ escalada de privilegio via corpo (perfil, ativo, status, auth_id) e bloqueada (50.764162ms)
+✔ Seguranca: autenticacao e autorizacao no backend (3196.927469ms)
+▶ Seguranca: entradas maliciosas e configuracao HTTP
+  ✔ SQL injection em ids, filtros e corpo nao altera o banco e retorna 4xx (51.242426ms)
+  ✔ JSON malformado retorna 400 e corpo grande retorna 413, sem detalhes internos (5.513018ms)
+  ✔ erro interno nao vaza stack trace nem detalhes do banco (4.666926ms)
+  ✔ cabecalhos de seguranca (helmet) e sem x-powered-by (1.739159ms)
+  ✔ CORS aceita apenas a origem do frontend configurado (2.505353ms)
+  ✔ limite de tentativas de login (429) (1718.616914ms)
+  ✔ rota inexistente retorna 404 em JSON (2.284758ms)
+✔ Seguranca: entradas maliciosas e configuracao HTTP (3458.237681ms)
+ℹ tests 66
+ℹ suites 9
+ℹ pass 66
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 75616.472042

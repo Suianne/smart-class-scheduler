@@ -1,0 +1,119 @@
+erDiagram
+    PERIODOS_LETIVOS ||--o{ TURMAS : "periodo_letivo"
+    PERIODOS_LETIVOS ||--o{ DISPONIBILIDADES : "periodo_letivo"
+    PERIODOS_LETIVOS ||--o{ VERSOES_HORARIO : "periodo"
+    TURNOS ||--o{ TURMAS : "turno"
+    USUARIOS ||--o| PROFESSORES : "usuario_id"
+    USUARIOS ||--o| ALUNOS : "usuario_id"
+    USUARIOS ||--o{ VERSOES_HORARIO : "responsavel"
+    USUARIOS ||--o{ HISTORICO_ALTERACOES : "usuario_id"
+    TURMAS ||--o{ ALUNOS : "turma_id"
+    TURMAS ||--o{ TURMA_DISCIPLINAS : "turma_id"
+    DISCIPLINAS ||--o{ TURMA_DISCIPLINAS : "disciplina_id"
+    PROFESSORES ||--o{ TURMA_DISCIPLINAS : "professor_id"
+    PROFESSORES ||--o{ DISPONIBILIDADES : "professor_id"
+    DISPONIBILIDADES |o--o{ DISPONIBILIDADES : "substitui_id"
+    VERSOES_HORARIO ||--o{ HORARIOS : "versao_id"
+    TURMAS ||--o{ HORARIOS : "turma_id"
+    DISCIPLINAS ||--o{ HORARIOS : "disciplina_id"
+    PROFESSORES ||--o{ HORARIOS : "professor_id"
+    SALAS ||--o{ HORARIOS : "sala_id"
+
+    PERIODOS_LETIVOS {
+        bigint id PK
+        text codigo UK
+        date data_inicio
+        date data_fim
+        boolean coleta_aberta
+    }
+    TURNOS {
+        bigint id PK
+        text nome UK
+        time inicio
+        time fim
+        time intervalo_inicio
+        time intervalo_fim
+        smallint duracao_aula_min
+    }
+    USUARIOS {
+        bigint id PK
+        uuid auth_id UK
+        text nome
+        text email UK
+        text perfil
+        boolean ativo
+    }
+    PROFESSORES {
+        bigint id PK
+        bigint usuario_id FK
+        text matricula UK
+    }
+    ALUNOS {
+        bigint id PK
+        bigint usuario_id FK
+        text matricula UK
+        bigint turma_id FK
+    }
+    DISCIPLINAS {
+        bigint id PK
+        text nome
+        text codigo UK
+        smallint carga_horaria
+    }
+    TURMAS {
+        bigint id PK
+        text nome
+        text turno FK
+        text periodo_letivo FK
+    }
+    SALAS {
+        bigint id PK
+        text identificacao UK
+        smallint capacidade
+    }
+    TURMA_DISCIPLINAS {
+        bigint id PK
+        bigint turma_id FK
+        bigint disciplina_id FK
+        bigint professor_id FK
+        smallint carga_semanal
+    }
+    DISPONIBILIDADES {
+        bigint id PK
+        bigint professor_id FK
+        text periodo_letivo FK
+        text dia
+        time inicio
+        time fim
+        text status
+        bigint substitui_id FK
+    }
+    VERSOES_HORARIO {
+        bigint id PK
+        text periodo FK
+        text status
+        timestamptz data
+        bigint responsavel FK
+        timestamptz publicada_em
+    }
+    HORARIOS {
+        bigint id PK
+        bigint versao_id FK
+        bigint turma_id FK
+        bigint disciplina_id FK
+        bigint professor_id FK
+        bigint sala_id FK
+        text dia
+        time inicio
+        time fim
+        text situacao
+    }
+    HISTORICO_ALTERACOES {
+        bigint id PK
+        bigint usuario_id FK
+        text operacao
+        text tabela
+        bigint registro_id
+        timestamptz data
+        jsonb valores_alterados
+    }
