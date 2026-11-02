@@ -104,3 +104,58 @@ describe('Consulta de horarios', () => {
     await assert.rejects(criarVersaoComAulas(amb, { status: 'publicada' }), /ux_versao_publicada/);
   });
 });
+
+
+describe('Geracao de horarios', () => {
+  let amb;
+
+  before(async () => {
+    amb = await criarAmbiente();
+  });
+
+  beforeEach(async () => {
+    await amb.resetar();
+  });
+
+  test('coordenador consegue gerar uma versao em rascunho', async () => {
+    const r = await como(amb, USUARIOS.coord).post('/api/horarios/gerar', {
+      periodo: '2026.2',
+    });
+
+    assert.equal(r.status, 201);
+    assert.equal(r.body.versao.status, 'rascunho');
+    assert.equal(r.body.versao.periodo, '2026.2');
+    assert.ok(r.body.versao.id);
+    assert.ok(Array.isArray(r.body.conflitos));
+    assert.ok(Array.isArray(r.body.nao_alocadas));
+  });
+
+  test('aluno nao pode gerar horario', async () => {
+    const r = await como(amb, USUARIOS.alunoA1).post('/api/horarios/gerar', {
+      periodo: '2026.2',
+    });
+
+    assert.equal(r.status, 403);
+  });
+
+  test('professor nao pode gerar horario', async () => {
+    const r = await como(amb, USUARIOS.ana).post('/api/horarios/gerar', {
+      periodo: '2026.2',
+    });
+
+    assert.equal(r.status, 403);
+  });
+
+  test('geracao identifica aulas que nao podem ser alocadas', async () => {
+    const r = await como(amb, USUARIOS.coord).post('/api/horarios/gerar', {
+      periodo: '2026.2',
+    });
+
+    assert.equal(r.status, 201);
+    assert.ok(Array.isArray(r.body.nao_alocadas));
+
+    // O contrato garante que a resposta devolve as aulas nao alocadas.
+    // O seed possui um professor (P006) sem disponibilidade.
+    assert.ok(r.body.nao_alocadas.length > 0);
+  });
+});
