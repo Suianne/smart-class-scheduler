@@ -1,6 +1,6 @@
 import { test, describe, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { criarAmbiente, como, USUARIOS, criarVersaoComAulas } from './helpers.js';
+import { criarAmbiente, como, USUARIOS, criarVersaoComAulas, contar } from './helpers.js';
 
 // Ids do seed: Turma A=1, B=2, C=3. Professores P001..P006 = 1..6. Disciplinas BD01=1, JS01=2...
 const AULAS = [
@@ -239,5 +239,304 @@ describe('Geracao de horarios', () => {
         aula.motivo === 'Professor sem disponibilidade aprovada.',
     ),
   );
+});
+
+describe('Edicao de horarios', () => {
+  before(async () => {
+    if (!amb) amb = await criarAmbiente();
+  });
+
+  beforeEach(async () => {
+    await amb.resetar();
+  });
+
+  test('coordenador edita aula em rascunho e registra historico', async () => {
+    const versaoId = await criarVersaoComAulas(amb, {
+      status: 'rascunho',
+      aulas: [
+        {
+          turma: 1,
+          disciplina: 1,
+          professor: 1,
+          sala: 1,
+          dia: 'segunda',
+          inicio: '08:00',
+          fim: '09:00',
+        },
+      ],
+    });
+
+    const aula = (await amb.db.query(
+      'SELECT id FROM horarios WHERE versao_id = $1',
+      [versaoId],
+    )).rows[0];
+
+    const r = await como(amb, USUARIOS.coord).put(
+      `/api/horarios/${aula.id}`,
+      {
+        inicio: '09:00',
+        fim: '10:00',
+      },
+    );
+
+    assert.equal(r.status, 200);
+
+    const salva = (await amb.db.query(
+      `SELECT to_char(inicio, 'HH24:MI') AS inicio,
+              to_char(fim, 'HH24:MI') AS fim,
+              situacao
+       FROM horarios
+       WHERE id = $1`,
+      [aula.id],
+    )).rows[0];
+
+    assert.equal(salva.inicio, '09:00');
+    assert.equal(salva.fim, '10:00');
+    assert.equal(salva.situacao, 'alterada');
+
+    const historico = await contar(
+      amb,
+      'historico_alteracoes',
+      `operacao = 'editar_horario' AND registro_id = ${aula.id}`,
+    );
+
+    assert.equal(historico, 1);
+  });
+
+  test('coordenador nao consegue atribuir aula a professor sem disponibilidade aprovada', async () => {
+  const versaoId = await criarVersaoComAulas(amb, {
+    status: 'rascunho',
+    aulas: [
+      {
+        turma: 1,
+        disciplina: 1,
+        professor: 1,
+        sala: 1,
+        dia: 'segunda',
+        inicio: '08:00',
+        fim: '09:00',
+      },
+    ],
+  });
+
+  const aula = (await amb.db.query(
+    'SELECT id FROM horarios WHERE versao_id = $1',
+    [versaoId],
+  )).rows[0];
+
+  const r = await como(amb, USUARIOS.coord).put(
+    `/api/horarios/${aula.id}`,
+    {
+      turma_id: 2,
+      disciplina_id: 5,
+      professor_id: 6,
+      sala_id: 2,
+      dia: 'segunda',
+      inicio: '09:00',
+      fim: '10:00',
+    },
+  );
+
+  assert.equal(r.status, 400);
+
+  const salva = (await amb.db.query(
+    'SELECT professor_id, situacao FROM horarios WHERE id = $1',
+    [aula.id],
+  )).rows[0];
+
+  assert.equal(salva.professor_id, 1);
+  assert.equal(salva.situacao, 'agendada');
+});
+});
+
+test('coordenador nao consegue editar aula para horario conflitante do mesmo professor', async () => {
+  const versaoId = await criarVersaoComAulas(amb, {
+    status: 'rascunho',
+    aulas: [
+      {
+        turma: 1,
+        disciplina: 1,
+        professor: 1,
+        sala: 1,
+        dia: 'segunda',
+        inicio: '08:00',
+        fim: '09:00',
+      },
+      {
+        turma: 2,
+        disciplina: 1,
+        professor: 1,
+        sala: 2,
+        dia: 'terca',
+        inicio: '08:00',
+        fim: '09:00',
+      },
+    ],
+  });
+
+  const aulas = (await amb.db.query(
+    'SELECT id FROM horarios WHERE versao_id = $1 ORDER BY id',
+    [versaoId],
+  )).rows;
+
+  const r = await como(amb, USUARIOS.coord).put(
+    `/api/horarios/${aulas[0].id}`,
+    {
+      dia: 'terca',
+      inicio: '08:00',
+      fim: '09:00',
+    },
+  );
+
+  assert.equal(r.status, 409);
+
+  const salva = (await amb.db.query(
+    'SELECT dia, situacao FROM horarios WHERE id = $1',
+    [aulas[0].id],
+  )).rows[0];
+
+  assert.equal(salva.dia, 'segunda');
+  assert.equal(salva.situacao, 'agendada');
+});
+
+test('aluno e professor nao podem editar horarios', async () => {
+  const versaoId = await criarVersaoComAulas(amb, {
+    status: 'rascunho',
+    aulas: [
+      {
+        turma: 1,
+        disciplina: 1,
+        professor: 1,
+        sala: 1,
+        dia: 'segunda',
+        inicio: '08:00',
+        fim: '09:00',
+      },
+    ],
+  });
+
+  const aula = (await amb.db.query(
+    'SELECT id FROM horarios WHERE versao_id = $1',
+    [versaoId],
+  )).rows[0];
+
+  const dados = {
+    inicio: '09:00',
+    fim: '10:00',
+  };
+
+  const aluno = await como(amb, USUARIOS.alunoA1)
+    .put(`/api/horarios/${aula.id}`, dados);
+
+  const professor = await como(amb, USUARIOS.ana)
+    .put(`/api/horarios/${aula.id}`, dados);
+
+  assert.equal(aluno.status, 403);
+  assert.equal(professor.status, 403);
+
+  const salva = (await amb.db.query(
+    'SELECT inicio, fim FROM horarios WHERE id = $1',
+    [aula.id],
+  )).rows[0];
+
+  assert.equal(salva.inicio, '08:00');
+  assert.equal(salva.fim, '09:00');
+});
+
+test('nao permite editar horarios de uma versao publicada', async () => {
+  const versaoId = await criarVersaoComAulas(amb, {
+    status: 'publicada',
+    aulas: [
+      {
+        turma: 1,
+        disciplina: 1,
+        professor: 1,
+        sala: 1,
+        dia: 'segunda',
+        inicio: '08:00',
+        fim: '09:00',
+      },
+    ],
+  });
+
+  const aula = (await amb.db.query(
+    'SELECT id FROM horarios WHERE versao_id = $1',
+    [versaoId],
+  )).rows[0];
+
+  const resposta = await como(amb, USUARIOS.coord)
+    .put(`/api/horarios/${aula.id}`, {
+      inicio: '09:00',
+      fim: '10:00',
+    });
+
+  assert.equal(resposta.status, 409);
+
+  const salva = (await amb.db.query(
+    'SELECT inicio, fim FROM horarios WHERE id = $1',
+    [aula.id],
+  )).rows[0];
+
+  assert.equal(salva.inicio, '08:00');
+  assert.equal(salva.fim, '09:00');
+});
+
+test('nao permite transferir aula para turma de outro periodo letivo', async () => {
+  // Cria o periodo letivo necessario para a turma.
+  await amb.db.query(
+    `INSERT INTO periodos_letivos (codigo, data_inicio, data_fim)
+     VALUES ('2027.1', '2027-01-01', '2027-06-30')`,
+  );
+
+  // Cria uma turma de outro periodo.
+  const turma = (await amb.db.query(
+    `INSERT INTO turmas (nome, turno, periodo_letivo)
+     VALUES ('Turma Teste', 'manha', '2027.1')
+     RETURNING id`,
+  )).rows[0];
+
+  // Cria um vinculo valido para essa turma.
+  await amb.db.query(
+    `INSERT INTO turma_disciplinas
+       (turma_id, disciplina_id, professor_id, carga_semanal)
+     VALUES ($1, 1, 1, 4)`,
+    [turma.id],
+  );
+
+  // Cria uma versao no periodo 2026.2.
+  const versaoId = await criarVersaoComAulas(amb, {
+    status: 'rascunho',
+    periodo: '2026.2',
+    aulas: [
+      {
+        turma: 1,
+        disciplina: 1,
+        professor: 1,
+        sala: 1,
+        dia: 'segunda',
+        inicio: '08:00',
+        fim: '09:00',
+      },
+    ],
+  });
+
+  const aula = (await amb.db.query(
+    'SELECT id FROM horarios WHERE versao_id = $1',
+    [versaoId],
+  )).rows[0];
+
+  const resposta = await como(amb, USUARIOS.coord)
+    .put(`/api/horarios/${aula.id}`, {
+      turma_id: turma.id,
+    });
+
+  assert.equal(resposta.status, 400);
+
+  const salva = (await amb.db.query(
+    'SELECT turma_id FROM horarios WHERE id = $1',
+    [aula.id],
+  )).rows[0];
+
+  assert.equal(salva.turma_id, 1);
 });
 });
