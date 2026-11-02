@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { distribuirAulas } from '../lib/gerar-horarios.js';
+import { registrarHistorico } from '../lib/historico.js';
 import {
   assincrono,
   idDaRota,
@@ -7,6 +9,7 @@ import {
   requisicaoInvalida,
 } from '../lib/http.js';
 import { autenticar, exigirPerfil, somenteCoordenador } from '../middleware/auth.js';
+
 
 // Consulta de horarios (Modulo 5, leitura).
 // Alunos e professores enxergam apenas a versao PUBLICADA (oficial).
@@ -80,12 +83,7 @@ export function rotasHorarios({ db, auth }) {
   }
 
   // POST /api/horarios/gerar
-  //
-  // Primeira etapa da Parte 2:
-  // cria uma nova versao de horario em rascunho.
-  //
-  // A implementacao completa da geracao das aulas sera adicionada
-  // posteriormente.
+  // Cria uma versão e distribui as aulas em uma única transação.
   r.post('/gerar', somenteCoordenador, assincrono(async (req, res) => {
     const { periodo } = req.body ?? {};
 
@@ -95,92 +93,165 @@ export function rotasHorarios({ db, auth }) {
 
     const periodoNormalizado = periodo.trim();
 
-    const periodoExiste = (
-      await db.query(
-        `SELECT codigo
-           FROM periodos_letivos
-          WHERE codigo = $1`,
-        [periodoNormalizado],
-      )
-    ).rows[0];
+    const resultado = await db.transaction(async (tx) => {
+      // 1. Verifica o período letivo.
+      const periodoExiste = (
+        await tx.query(
+          `SELECT codigo
+             FROM periodos_letivos
+            WHERE codigo = $1`,
+          [periodoNormalizado],
+        )
+      ).rows[0];
 
-    if (!periodoExiste) {
-      throw naoEncontrado('Periodo letivo nao encontrado.');
-    }
+      if (!periodoExiste) {
+        throw naoEncontrado('Periodo letivo nao encontrado.');
+      }
 
-    const versao = (
-      await db.query(
-        `INSERT INTO versoes_horario
-            (periodo, status, responsavel)
-         VALUES ($1, 'rascunho', $2)
-         RETURNING id, periodo, status, data, publicada_em`,
-        [periodoNormalizado, req.user.id],
-      )
-    ).rows[0];
-
-        // Busca as disciplinas que precisam ser alocadas no periodo.
-    const demandas = (
-      await db.query(
-        `SELECT
-            td.id,
-            td.turma_id,
-            t.nome AS turma_nome,
-            t.turno,
-            td.disciplina_id,
-            d.nome AS disciplina_nome,
-            d.codigo AS disciplina_codigo,
-            td.professor_id,
-            up.nome AS professor_nome,
-            td.carga_semanal
-           FROM turma_disciplinas td
-           JOIN turmas t
-             ON t.id = td.turma_id
-           JOIN disciplinas d
-             ON d.id = td.disciplina_id
-           JOIN professores p
-             ON p.id = td.professor_id
-           JOIN usuarios up
-             ON up.id = p.usuario_id
-          WHERE t.periodo_letivo = $1
-          ORDER BY t.nome, d.nome`,
-        [periodoNormalizado],
-      )
-    ).rows;
-
-    const naoAlocadas = [];
-
-    for (const demanda of demandas) {
-      const disponibilidade = (
-        await db.query(
-          `SELECT id, dia, inicio, fim
-             FROM disponibilidades
-            WHERE professor_id = $1
-              AND periodo_letivo = $2
-              AND status = 'aprovada'
-            ORDER BY dia, inicio`,
-          [demanda.professor_id, periodoNormalizado],
+      // 2. Busca as demandas das turmas.
+      const demandas = (
+        await tx.query(
+          `SELECT
+              td.id,
+              td.turma_id,
+              t.nome AS turma_nome,
+              t.turno,
+              td.disciplina_id,
+              d.nome AS disciplina_nome,
+              d.codigo AS disciplina_codigo,
+              td.professor_id,
+              up.nome AS professor_nome,
+              td.carga_semanal
+             FROM turma_disciplinas td
+             JOIN turmas t ON t.id = td.turma_id
+             JOIN disciplinas d ON d.id = td.disciplina_id
+             JOIN professores p ON p.id = td.professor_id
+             JOIN usuarios up ON up.id = p.usuario_id
+            WHERE t.periodo_letivo = $1
+            ORDER BY t.nome, d.nome`,
+          [periodoNormalizado],
         )
       ).rows;
 
-      if (disponibilidade.length === 0) {
-        naoAlocadas.push({
-          turma_id: demanda.turma_id,
-          turma_nome: demanda.turma_nome,
-          disciplina_id: demanda.disciplina_id,
-          disciplina_nome: demanda.disciplina_nome,
-          disciplina_codigo: demanda.disciplina_codigo,
-          professor_id: demanda.professor_id,
-          professor_nome: demanda.professor_nome,
-          carga_semanal: demanda.carga_semanal,
-          motivo: 'Professor sem disponibilidade aprovada.',
-        });
+      // 3. Busca os turnos cadastrados.
+      const turnos = (
+        await tx.query(
+          `SELECT nome, inicio, fim,
+                  intervalo_inicio, intervalo_fim,
+                  duracao_aula_min
+             FROM turnos
+            ORDER BY inicio`,
+        )
+      ).rows;
+
+      // 4. Busca as salas disponíveis.
+      const salas = (
+        await tx.query(
+          `SELECT id
+             FROM salas
+            ORDER BY identificacao`,
+        )
+      ).rows;
+
+      // 5. Busca as disponibilidades dos professores.
+      const disponibilidades = (
+        await tx.query(
+          `SELECT professor_id, dia, inicio, fim, status
+             FROM disponibilidades
+            WHERE periodo_letivo = $1
+              AND status = 'aprovada'
+            ORDER BY dia, inicio`,
+          [periodoNormalizado],
+        )
+      ).rows;
+
+      // 6. Cria a versão em rascunho.
+      const versao = (
+        await tx.query(
+          `INSERT INTO versoes_horario
+              (periodo, status, responsavel)
+           VALUES ($1, 'rascunho', $2)
+           RETURNING id, periodo, status, data, publicada_em`,
+          [periodoNormalizado, req.user.id],
+        )
+      ).rows[0];
+
+      // 7. Executa o algoritmo de distribuição.
+      const distribuicao = distribuirAulas({
+        demandas,
+        turnos,
+        disponibilidades,
+        salas,
+      });
+
+      // 8. Insere as aulas que conseguiram ser alocadas.
+      for (const aula of distribuicao.aulas) {
+        await tx.query(
+          `INSERT INTO horarios
+              (versao_id, turma_id, disciplina_id,
+               professor_id, sala_id, dia, inicio, fim)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            versao.id,
+            aula.turma_id,
+            aula.disciplina_id,
+            aula.professor_id,
+            aula.sala_id,
+            aula.dia,
+            aula.inicio,
+            aula.fim,
+          ],
+        );
       }
-    }
+
+      // 9. Registra a operação no histórico.
+      await registrarHistorico(tx, {
+        usuarioId: req.user.id,
+        operacao: 'gerar_horario',
+        tabela: 'versoes_horario',
+        registroId: versao.id,
+        valores: {
+          periodo: periodoNormalizado,
+          aulas_alocadas: distribuicao.aulas.length,
+          aulas_nao_alocadas: distribuicao.nao_alocadas.length,
+        },
+      });
+
+      // 10. Enriquece as aulas não alocadas com os dados da demanda.
+      const naoAlocadas = distribuicao.nao_alocadas.map((item) => {
+        const demanda = demandas.find(
+          (d) =>
+            String(d.turma_id) === String(item.turma_id) &&
+            String(d.disciplina_id) === String(item.disciplina_id) &&
+            String(d.professor_id) === String(item.professor_id),
+        );
+
+        return {
+          ...item,
+          turma_nome: demanda?.turma_nome,
+          disciplina_nome: demanda?.disciplina_nome,
+          disciplina_codigo: demanda?.disciplina_codigo,
+          professor_nome: demanda?.professor_nome,
+          motivo:
+            item.motivo === 'sem_disponibilidade_aprovada'
+              ? 'Professor sem disponibilidade aprovada.'
+              : 'Nao foi encontrado horario compativel.',
+        };
+      });
+
+      return {
+        versao,
+        aulas_alocadas: distribuicao.aulas.length,
+        conflitos: [],
+        nao_alocadas: naoAlocadas,
+      };
+    });
 
     res.status(201).json({
-      versao: resumoVersao(versao),
-      conflitos: [],
-      nao_alocadas: naoAlocadas,
+      versao: resumoVersao(resultado.versao),
+      aulas_alocadas: resultado.aulas_alocadas,
+      conflitos: resultado.conflitos,
+      nao_alocadas: resultado.nao_alocadas,
     });
   }));
 

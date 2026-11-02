@@ -105,7 +105,6 @@ describe('Consulta de horarios', () => {
   });
 });
 
-
 describe('Geracao de horarios', () => {
   let amb;
 
@@ -158,4 +157,87 @@ describe('Geracao de horarios', () => {
     // O seed possui um professor (P006) sem disponibilidade.
     assert.ok(r.body.nao_alocadas.length > 0);
   });
+
+  test('geracao grava as aulas na tabela horarios e registra o historico', async () => {
+  const r = await como(amb, USUARIOS.coord).post('/api/horarios/gerar', {
+    periodo: '2026.2',
+  });
+
+  assert.equal(r.status, 201);
+
+  const versaoId = r.body.versao.id;
+
+  const resultado = await amb.db.query(
+    `SELECT COUNT(*) AS total
+     FROM horarios
+     WHERE versao_id = $1`,
+    [versaoId],
+  );
+
+  const totalAulas = Number(resultado.rows[0].total);
+
+  assert.ok(totalAulas > 0);
+  assert.equal(totalAulas, r.body.aulas_alocadas);
+
+  const historico = await amb.db.query(
+    `SELECT COUNT(*) AS total
+     FROM historico_alteracoes
+     WHERE operacao = 'gerar_horario'
+       AND registro_id = $1`,
+    [versaoId],
+  );
+
+  assert.equal(Number(historico.rows[0].total), 1);
+  });
+
+  test('geracao respeita as disponibilidades aprovadas dos professores', async () => {
+  const r = await como(amb, USUARIOS.coord).post('/api/horarios/gerar', {
+    periodo: '2026.2',
+  });
+
+  assert.equal(r.status, 201);
+
+  const resultado = await amb.db.query(
+    `SELECT COUNT(*) AS total
+     FROM horarios h
+     JOIN versoes_horario v ON v.id = h.versao_id
+     WHERE h.versao_id = $1
+       AND NOT EXISTS (
+         SELECT 1
+         FROM disponibilidades d
+         WHERE d.professor_id = h.professor_id
+           AND d.periodo_letivo = v.periodo
+           AND d.dia = h.dia
+           AND d.status = 'aprovada'
+           AND d.inicio <= h.inicio
+           AND d.fim >= h.fim
+       )`,
+    [r.body.versao.id],
+  );
+
+  assert.equal(Number(resultado.rows[0].total), 0);
+  });
+
+  test('geracao aloca todas as aulas possiveis e identifica as pendencias', async () => {
+  const r = await como(amb, USUARIOS.coord).post('/api/horarios/gerar', {
+    periodo: '2026.2',
+  });
+
+  assert.equal(r.status, 201);
+
+  // Total de aulas previstas: 49.
+  // Seis não podem ser alocadas por falta de disponibilidade do professor.
+  assert.equal(r.body.aulas_alocadas, 43);
+  assert.equal(r.body.nao_alocadas.length, 6);
+
+  // Todas as pendências devem corresponder ao professor sem disponibilidade.
+  assert.ok(
+    r.body.nao_alocadas.every(
+      (aula) =>
+        aula.disciplina_codigo === 'API01' &&
+        aula.professor_nome === 'Fabio Martins' &&
+        aula.motivo === 'Professor sem disponibilidade aprovada.',
+    ),
+  );
+});
 });
