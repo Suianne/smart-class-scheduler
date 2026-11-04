@@ -114,8 +114,48 @@ export default function Horarios() {
   }, [perfil, tipoVisualizacao, turmaSelecionada, professorSelecionado, versaoIdSelecionada]);
 
   useEffect(() => {
-    carregarGrade();
-  }, [carregarGrade]);
+    let ativo = true;
+    let requisicao = Promise.resolve(null);
+
+    if (perfil === 'aluno') {
+      requisicao = obterHorarioMinhaTurma();
+    } else if (perfil === 'professor') {
+      requisicao = obterHorarioProfessor();
+    } else if (perfil === 'coordenador' && tipoVisualizacao === 'turma' && turmaSelecionada) {
+      requisicao = obterHorarioMinhaTurma({
+        turma_id: turmaSelecionada,
+        versao_id: versaoIdSelecionada || undefined,
+      });
+    } else if (perfil === 'coordenador' && tipoVisualizacao === 'professor' && professorSelecionado) {
+      requisicao = obterHorarioProfessor({
+        professor_id: professorSelecionado,
+        versao_id: versaoIdSelecionada || undefined,
+      });
+    }
+
+    requisicao
+      .then((dados) => {
+        if (!ativo || !dados) return;
+        setAulas(dados.aulas || []);
+        setVersao(dados.versao);
+        if (perfil === 'professor' || tipoVisualizacao === 'professor') {
+          setTurmasAtribuidas(dados.turmas_atribuidas || []);
+        }
+      })
+      .catch((err) => {
+        if (!ativo) return;
+        setAulas([]);
+        setVersao(null);
+        setMensagem({ tipo: 'erro', texto: err.message });
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [perfil, tipoVisualizacao, turmaSelecionada, professorSelecionado, versaoIdSelecionada]);
 
   // Horários únicos presentes nas aulas (para linhas da tabela)
   const slotsHorarios = useMemo(() => {
