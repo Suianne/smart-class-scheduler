@@ -50,7 +50,7 @@ Os testes usam o PostgreSQL real em memória (PGlite) carregado com os mesmos sc
 | Força bruta no login | 32 tentativas em sequência | 429 |
 | Conta desativada | Acesso e login | 403 |
 | Exposição de chaves | `SUPABASE_SERVICE_ROLE_KEY` aparece apenas em arquivos do backend | Conferido por busca no repositório |
-| Dependências | `npm audit --omit=dev` | 0 vulnerabilidades |
+| Dependências | `npm audit --omit=dev` | Verificação pendente antes do deploy de produção. |
 
 ## 4. Verificações manuais após o deploy
 
