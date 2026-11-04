@@ -25,8 +25,6 @@ export default function Disciplinas() {
   });
 
   const carregar = useCallback(async () => {
-    await Promise.resolve();
-    setCarregando(true);
     try {
       const dados = await listarDisciplinas();
       setDisciplinas(Array.isArray(dados) ? dados : dados.disciplinas || []);
