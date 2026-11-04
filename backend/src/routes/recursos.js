@@ -1,6 +1,6 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { z } from 'zod';
-import { assincrono, idDaRota, naoEncontrado } from '../lib/http.js';
+import { assincrono, idDaRota, naoEncontrado, conflito } from '../lib/http.js';
 import { registrarHistorico } from '../lib/historico.js';
 import { autenticar, somenteCoordenador } from '../middleware/auth.js';
 import { validarCorpo, horaHHMM, dataISO, algumCampo, idPositivo } from '../middleware/validar.js';
@@ -88,6 +88,22 @@ export function rotasRecursos({ db, auth }) {
 
     // Lista (com filtros opcionais por igualdade, vindos de uma lista fixa)
     r.get(`/${caminho}`, login, assincrono(async (req, res) => {
+      if (caminho === 'turmas' && typeof auth.listarTurmas === 'function') {
+        return res.json(await auth.listarTurmas());
+      }
+
+      if (caminho === 'disciplinas' && typeof auth.listarDisciplinas === 'function') {
+        return res.json(await auth.listarDisciplinas());
+      }
+
+      if (caminho === 'turma-disciplinas' && typeof auth.listarVinculosTurma === 'function') {
+        const turmaId = req.query.turma_id === undefined
+          ? null
+          : idDaRota(req.query.turma_id, 'turma_id');
+
+        return res.json(await auth.listarVinculosTurma(turmaId));
+      }
+
       const where = [];
       const params = [];
       for (const f of cfg.filtros || []) {
@@ -111,6 +127,32 @@ export function rotasRecursos({ db, auth }) {
     }));
 
     r.post(`/${caminho}`, login, somenteCoordenador, validarCorpo(schemaCriar), assincrono(async (req, res) => {
+      if (caminho === 'turmas' && typeof auth.cadastrarTurma === 'function') {
+        const criado = await auth.cadastrarTurma({
+          ...req.body,
+          usuarioId: req.user.id,
+        });
+
+        return res.status(201).json(criado);
+      }
+
+      if (caminho === 'disciplinas' && typeof auth.cadastrarDisciplina === 'function') {
+        const criado = await auth.cadastrarDisciplina({
+          ...req.body,
+          usuarioId: req.user.id,
+        });
+
+        return res.status(201).json(criado);
+      }
+
+      if (caminho === 'turma-disciplinas' && typeof auth.cadastrarVinculoTurma === 'function') {
+        const criado = await auth.cadastrarVinculoTurma({
+          ...req.body,
+          usuarioId: req.user.id,
+        });
+
+        return res.status(201).json(criado);
+      }
       const dados = { ...(cfg.padroes || {}), ...req.body };
       const cols = colunas.filter((c) => dados[c] !== undefined);
       const criado = await db.transaction(async (tx) => {
@@ -129,6 +171,17 @@ export function rotasRecursos({ db, auth }) {
 
     r.put(`/${caminho}/:id`, login, somenteCoordenador, validarCorpo(schemaAtualizar), assincrono(async (req, res) => {
       const id = idDaRota(req.params.id);
+      if (caminho === 'turmas' && typeof auth.editarTurma === 'function') {
+        const atualizado = await auth.editarTurma({
+          id,
+          nome: req.body.nome,
+          turno: req.body.turno,
+          periodo_letivo: req.body.periodo_letivo,
+          usuarioId: req.user.id,
+        });
+
+        return res.json(atualizado);
+      }
       const cols = colunas.filter((c) => req.body[c] !== undefined);
       const atualizado = await db.transaction(async (tx) => {
         const antes = (await tx.query(`SELECT * FROM ${cfg.tabela} WHERE id = $1 FOR UPDATE`, [id])).rows[0];
@@ -148,6 +201,30 @@ export function rotasRecursos({ db, auth }) {
 
     r.delete(`/${caminho}/:id`, login, somenteCoordenador, assincrono(async (req, res) => {
       const id = idDaRota(req.params.id);
+      if (caminho === 'turmas' && typeof auth.excluirTurma === 'function') {
+        const excluida = await auth.excluirTurma({
+          id,
+          usuarioId: req.user.id,
+        });
+
+        if (excluida === null || excluida === undefined) {
+          throw naoEncontrado('Turma nao encontrada.');
+        }
+
+        return res.status(204).end();
+      }
+      if (caminho === 'turma-disciplinas' && typeof auth.excluirVinculoTurma === 'function') {
+        const excluida = await auth.excluirVinculoTurma({
+          id,
+          usuarioId: req.user.id,
+        });
+
+        if (!excluida) {
+          throw naoEncontrado('Vínculo não encontrado.');
+        }
+
+        return res.status(204).end();
+      }
       await db.transaction(async (tx) => {
         const { rows } = await tx.query(`DELETE FROM ${cfg.tabela} WHERE id = $1 RETURNING *`, [id]);
         if (!rows[0]) throw naoEncontrado();
@@ -162,3 +239,15 @@ export function rotasRecursos({ db, auth }) {
 
   return r;
 }
+
+
+
+
+
+
+
+
+
+
+
+

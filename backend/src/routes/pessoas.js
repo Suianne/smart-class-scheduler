@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { z } from 'zod';
 import { HttpError, assincrono, idDaRota, naoEncontrado, conflito } from '../lib/http.js';
 import { registrarHistorico } from '../lib/historico.js';
@@ -42,6 +42,14 @@ export function rotasPessoas({ db, auth }) {
         FROM ${cfg.tabela} x JOIN usuarios u ON u.id = x.usuario_id`;
 
     r.get(`/${caminho}`, login, somenteCoordenador, assincrono(async (req, res) => {
+      if (caminho === 'professores' && typeof auth.listarProfessores === 'function') {
+        return res.json(await auth.listarProfessores());
+      }
+
+      if (caminho === 'alunos' && typeof auth.listarAlunos === 'function') {
+        return res.json(await auth.listarAlunos());
+      }
+
       const { rows } = await db.query(`${baseSelect} ORDER BY u.nome`);
       res.json(rows);
     }));
@@ -138,3 +146,5 @@ export function rotasPessoas({ db, auth }) {
 
   return r;
 }
+
+

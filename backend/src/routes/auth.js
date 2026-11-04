@@ -23,21 +23,35 @@ export function rotasAuth({ db, auth }) {
   });
 
   async function perfilPorAuthId(authId) {
-    const { rows } = await db.query(
-      `SELECT u.id, u.nome, u.email, u.perfil, u.ativo, p.id AS professor_id, a.id AS aluno_id, a.turma_id
-         FROM usuarios u
-         LEFT JOIN professores p ON p.usuario_id = u.id
-         LEFT JOIN alunos a ON a.usuario_id = u.id
-        WHERE u.auth_id = $1`,
-      [authId],
-    );
-    const u = rows[0];
-    if (!u || !u.ativo) return null;
-    return {
-      id: u.id, nome: u.nome, email: u.email, perfil: u.perfil,
-      professor_id: u.professor_id, aluno_id: u.aluno_id, turma_id: u.turma_id,
-    };
+  // Aplicacao real: consulta HTTPS pelo Supabase RPC.
+  if (typeof auth.buscarPerfilPorAuthId === 'function') {
+    return auth.buscarPerfilPorAuthId(authId);
   }
+
+  // Testes: utiliza o banco PGlite.
+  const { rows } = await db.query(
+    `SELECT u.id, u.nome, u.email, u.perfil, u.ativo,
+            p.id AS professor_id, a.id AS aluno_id, a.turma_id
+       FROM usuarios u
+       LEFT JOIN professores p ON p.usuario_id = u.id
+       LEFT JOIN alunos a ON a.usuario_id = u.id
+      WHERE u.auth_id = $1`,
+    [authId],
+  );
+
+  const u = rows[0];
+  if (!u || !u.ativo) return null;
+
+  return {
+    id: u.id,
+    nome: u.nome,
+    email: u.email,
+    perfil: u.perfil,
+    professor_id: u.professor_id,
+    aluno_id: u.aluno_id,
+    turma_id: u.turma_id,
+  };
+}
 
   // POST /api/auth/login
   r.post('/login', limiteLogin, validarCorpo(schemaLogin), assincrono(async (req, res) => {

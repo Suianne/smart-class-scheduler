@@ -1,4 +1,4 @@
-import pg from 'pg';
+﻿import pg from 'pg';
 import { config } from './config.js';
 import { OID, paraNumero, paraTexto, paraHoraMinuto } from './lib/tipos.js';
 
@@ -6,26 +6,40 @@ pg.types.setTypeParser(OID.INT8, paraNumero);
 pg.types.setTypeParser(OID.DATE, paraTexto);
 pg.types.setTypeParser(OID.TIME, paraHoraMinuto);
 
-// Interface do banco usada pelo restante da aplicacao:
-//   db.query(texto, parametros)          -> { rows }
-//   db.transaction(async (tx) => {...})  -> tx.query(texto, parametros)
-// Os testes injetam uma implementacao com PGlite que segue o mesmo formato.
-
 export function criarDbPg(connectionString = config.databaseUrl) {
   const pool = new pg.Pool({
     connectionString,
-    // O Supabase exige TLS. Em ambiente local sem TLS, defina DATABASE_SSL=false.
-    ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false },
-    max: 10,
+    ssl: process.env.DATABASE_SSL === 'false'
+      ? false
+      : { rejectUnauthorized: false },
+
+    max: 5,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 10000,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10000,
+  });
+
+  pool.on('error', (err) => {
+    console.error(
+      '[PostgreSQL] Erro em conexão ociosa:',
+      err.message
+    );
   });
 
   return {
     query: (text, params) => pool.query(text, params),
+
     async transaction(fn) {
       const client = await pool.connect();
+
       try {
         await client.query('BEGIN');
-        const result = await fn({ query: (t, p) => client.query(t, p) });
+
+        const result = await fn({
+          query: (t, p) => client.query(t, p),
+        });
+
         await client.query('COMMIT');
         return result;
       } catch (err) {
@@ -35,6 +49,7 @@ export function criarDbPg(connectionString = config.databaseUrl) {
         client.release();
       }
     },
+
     end: () => pool.end(),
   };
 }

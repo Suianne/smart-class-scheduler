@@ -936,6 +936,172 @@ export function rotasHorarios({ db, auth }) {
     }),
   );
 
+
+  // =========================================================
+  // GET /api/horarios/conflitos
+  // Consulta conflitos e aulas nao alocadas de uma versao.
+  // =========================================================
+
+  r.get(
+    '/conflitos',
+    somenteCoordenador,
+    assincrono(async (req, res) => {
+      let versao;
+      if (req.query.versao_id) {
+        versao = await versaoPorId(idDaRota(req.query.versao_id, 'versao_id'));
+      } else if (
+        typeof req.query.periodo === 'string' &&
+        req.query.periodo.trim()
+      ) {
+        versao = (
+          await db.query(
+            `SELECT * FROM versoes_horario WHERE periodo = $1 ORDER BY data DESC LIMIT 1`,
+            [req.query.periodo.trim()]
+          )
+        ).rows[0];
+      } else {
+        versao = (
+          await db.query(
+            `SELECT * FROM versoes_horario ORDER BY data DESC LIMIT 1`
+          )
+        ).rows[0];
+      }
+
+      if (!versao) {
+        return res.json({
+          versao: null,
+          conflitos: [],
+          nao_alocadas: [],
+          aviso: 'Nenhuma versao encontrada.',
+        });
+      }
+
+      const aulas = (
+        await db.query(
+          `${SELECT_AULAS} WHERE h.versao_id = $1 ${ORDEM_AULAS}`,
+          [versao.id]
+        )
+      ).rows;
+
+      const disponibilidades = (
+        await db.query(
+          `SELECT professor_id, dia, inicio, fim, status
+             FROM disponibilidades
+            WHERE periodo_letivo = $1 AND status = 'aprovada'`,
+          [versao.periodo]
+        )
+      ).rows;
+
+      const conflitos = [];
+      const ativas = aulas.filter((a) => a.situacao !== 'cancelada');
+
+      for (let i = 0; i < ativas.length; i++) {
+        const a1 = ativas[i];
+
+        if (!professorTemDisponibilidade(a1, a1.dia, disponibilidades)) {
+          conflitos.push({
+            tipo: 'indisponibilidade_docente',
+            aula_id: a1.id,
+            dia: a1.dia,
+            inicio: a1.inicio,
+            fim: a1.fim,
+            professor: { id: a1.professor_id, nome: a1.professor_nome },
+            turma: { id: a1.turma_id, nome: a1.turma_nome },
+            disciplina: { id: a1.disciplina_id, nome: a1.disciplina_nome },
+            mensagem: `Professor ${a1.professor_nome} nao possui disponibilidade aprovada para ${a1.dia} das ${a1.inicio} as ${a1.fim}.`,
+          });
+        }
+
+        for (let j = i + 1; j < ativas.length; j++) {
+          const a2 = ativas[j];
+          if (a1.dia === a2.dia) {
+            const h1Ini = a1.inicio.slice(0, 5);
+            const h1Fim = a1.fim.slice(0, 5);
+            const h2Ini = a2.inicio.slice(0, 5);
+            const h2Fim = a2.fim.slice(0, 5);
+            const sobrepoe = !(h1Fim <= h2Ini || h1Ini >= h2Fim);
+
+            if (sobrepoe) {
+              if (a1.professor_id === a2.professor_id) {
+                conflitos.push({
+                  tipo: 'conflito_professor',
+                  aula1_id: a1.id,
+                  aula2_id: a2.id,
+                  dia: a1.dia,
+                  professor: a1.professor_nome,
+                  mensagem: `Professor ${a1.professor_nome} com aulas simultaneas (${a1.disciplina_nome} e ${a2.disciplina_nome}).`,
+                });
+              }
+              if (a1.sala_id === a2.sala_id) {
+                conflitos.push({
+                  tipo: 'conflito_sala',
+                  aula1_id: a1.id,
+                  aula2_id: a2.id,
+                  dia: a1.dia,
+                  sala: a1.sala_identificacao,
+                  mensagem: `Sala ${a1.sala_identificacao} com turmas simultaneas (${a1.turma_nome} e ${a2.turma_nome}).`,
+                });
+              }
+              if (a1.turma_id === a2.turma_id) {
+                conflitos.push({
+                  tipo: 'conflito_turma',
+                  aula1_id: a1.id,
+                  aula2_id: a2.id,
+                  dia: a1.dia,
+                  turma: a1.turma_nome,
+                  mensagem: `Turma ${a1.turma_nome} com disciplinas simultaneas (${a1.disciplina_nome} e ${a2.disciplina_nome}).`,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      const previstas = (
+        await db.query(
+          `SELECT td.turma_id, t.nome AS turma_nome,
+                  td.disciplina_id, d.nome AS disciplina_nome, d.codigo AS disciplina_codigo,
+                  td.professor_id, u.nome AS professor_nome,
+                  td.carga_semanal
+             FROM turma_disciplinas td
+             JOIN turmas t ON t.id = td.turma_id
+             JOIN disciplinas d ON d.id = td.disciplina_id
+             JOIN professores p ON p.id = td.professor_id
+             JOIN usuarios u ON u.id = p.usuario_id
+            WHERE t.periodo_letivo = $1`,
+          [versao.periodo]
+        )
+      ).rows;
+
+      const naoAlocadas = [];
+      for (const p of previstas) {
+        const alocadas = ativas.filter(
+          (a) => a.turma_id === p.turma_id && a.disciplina_id === p.disciplina_id
+        ).length;
+        if (alocadas < p.carga_semanal) {
+          naoAlocadas.push({
+            turma_id: p.turma_id,
+            turma_nome: p.turma_nome,
+            disciplina_id: p.disciplina_id,
+            disciplina_nome: p.disciplina_nome,
+            disciplina_codigo: p.disciplina_codigo,
+            professor_id: p.professor_id,
+            professor_nome: p.professor_nome,
+            aulas_previstas: p.carga_semanal,
+            aulas_alocadas: alocadas,
+            faltantes: p.carga_semanal - alocadas,
+          });
+        }
+      }
+
+      res.json({
+        versao: resumoVersao(versao),
+        conflitos,
+        nao_alocadas: naoAlocadas,
+      });
+    })
+  );
+
   return r;
 }
 

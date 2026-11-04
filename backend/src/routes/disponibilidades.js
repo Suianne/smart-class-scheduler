@@ -100,7 +100,24 @@ export function rotasDisponibilidades({ db, auth }) {
 
   // GET /api/disponibilidades
   r.get('/', login, docente, assincrono(async (req, res) => {
-    const where = [];
+        if (typeof auth.listarDisponibilidades === 'function') {
+      const linhas = await auth.listarDisponibilidades({
+        usuarioId: req.user.id,
+        professorId: req.user.perfil === 'professor'
+          ? req.user.professorId
+          : (req.query.professor_id
+              ? idDaRota(req.query.professor_id, 'professor_id')
+              : null),
+        periodoLetivo: typeof req.query.periodo_letivo === 'string'
+          ? req.query.periodo_letivo
+          : null,
+        status: typeof req.query.status === 'string'
+          ? req.query.status
+          : null,
+      });
+      return res.json(linhas);
+    }
+const where = [];
     const params = [];
     const add = (cond, v) => { params.push(v); where.push(cond.replace('?', `$${params.length}`)); };
 
@@ -119,7 +136,11 @@ export function rotasDisponibilidades({ db, auth }) {
 
   // GET /api/disponibilidades/pendentes  (coordenador)
   r.get('/pendentes', login, somenteCoordenador, assincrono(async (req, res) => {
-    const { rows } = await db.query(
+        if (typeof auth.listarDisponibilidadesPendentes === 'function') {
+      const linhas = await auth.listarDisponibilidadesPendentes(req.user.id);
+      return res.json(linhas);
+    }
+const { rows } = await db.query(
       `SELECT d.id, d.professor_id, u.nome AS professor_nome, d.periodo_letivo, d.dia, d.inicio, d.fim,
               d.status, d.substitui_id, d.criado_em,
               o.dia AS original_dia, o.inicio AS original_inicio, o.fim AS original_fim
@@ -135,7 +156,26 @@ export function rotasDisponibilidades({ db, auth }) {
 
   // POST /api/disponibilidades
   r.post('/', login, docente, validarCorpo(schemaCriar), assincrono(async (req, res) => {
-    const d = req.body;
+        if (typeof auth.cadastrarDisponibilidade === 'function') {
+      const d = req.body;
+      const professorId = resolverProfessor(req.user, d.professor_id);
+
+      const linha = await auth.cadastrarDisponibilidade({
+        usuarioId: req.user.id,
+        professorId,
+        dia: d.dia,
+        inicio: d.inicio,
+        fim: d.fim,
+        periodoLetivo: d.periodo_letivo ?? null,
+      });
+
+      if (linha.status === 'pendente') {
+        return res.status(202).json({ ...linha, aviso: AVISO_PENDENTE });
+      }
+
+      return res.status(201).json(linha);
+    }
+const d = req.body;
     const professorId = resolverProfessor(req.user, d.professor_id);
 
     const { linha, modo } = await db.transaction(async (tx) => {
@@ -166,7 +206,24 @@ export function rotasDisponibilidades({ db, auth }) {
 
   // PUT /api/disponibilidades/:id
   r.put('/:id', login, docente, validarCorpo(schemaAtualizar), assincrono(async (req, res) => {
-    const id = idDaRota(req.params.id);
+        if (typeof auth.editarDisponibilidade === 'function') {
+      const id = idDaRota(req.params.id);
+
+      const linha = await auth.editarDisponibilidade({
+        usuarioId: req.user.id,
+        id,
+        dia: req.body.dia ?? null,
+        inicio: req.body.inicio ?? null,
+        fim: req.body.fim ?? null,
+      });
+
+      if (linha.status === 'pendente') {
+        return res.status(202).json({ ...linha, aviso: AVISO_PENDENTE });
+      }
+
+      return res.json(linha);
+    }
+const id = idDaRota(req.params.id);
 
     const { linha, modo } = await db.transaction(async (tx) => {
       const atual = (await tx.query('SELECT * FROM disponibilidades WHERE id = $1 FOR UPDATE', [id])).rows[0];
@@ -241,7 +298,12 @@ export function rotasDisponibilidades({ db, auth }) {
 
   // DELETE /api/disponibilidades/:id
   r.delete('/:id', login, docente, assincrono(async (req, res) => {
-    const id = idDaRota(req.params.id);
+        if (typeof auth.excluirDisponibilidade === 'function') {
+      const id = idDaRota(req.params.id);
+      await auth.excluirDisponibilidade({ usuarioId: req.user.id, id });
+      return res.status(204).end();
+    }
+const id = idDaRota(req.params.id);
     await db.transaction(async (tx) => {
       const atual = (await tx.query('SELECT * FROM disponibilidades WHERE id = $1 FOR UPDATE', [id])).rows[0];
       if (!atual) throw naoEncontrado();
@@ -266,7 +328,19 @@ export function rotasDisponibilidades({ db, auth }) {
 
   // POST /api/disponibilidades/:id/aprovar  (coordenador)
   r.post('/:id/aprovar', login, somenteCoordenador, assincrono(async (req, res) => {
-    const id = idDaRota(req.params.id);
+        if (typeof auth.aprovarDisponibilidade === 'function') {
+      const id = idDaRota(req.params.id);
+      const linha = await auth.aprovarDisponibilidade({
+        usuarioId: req.user.id,
+        id,
+      });
+
+      return res.json({
+        ...linha,
+        aviso: 'Disponibilidade aprovada. A grade publicada nao e alterada automaticamente: gere uma nova versao se necessario.',
+      });
+    }
+const id = idDaRota(req.params.id);
     const linha = await db.transaction(async (tx) => {
       const atual = (await tx.query('SELECT * FROM disponibilidades WHERE id = $1 FOR UPDATE', [id])).rows[0];
       if (!atual) throw naoEncontrado();
@@ -299,7 +373,16 @@ export function rotasDisponibilidades({ db, auth }) {
 
   // POST /api/disponibilidades/:id/rejeitar  (coordenador)
   r.post('/:id/rejeitar', login, somenteCoordenador, assincrono(async (req, res) => {
-    const id = idDaRota(req.params.id);
+        if (typeof auth.rejeitarDisponibilidade === 'function') {
+      const id = idDaRota(req.params.id);
+      const linha = await auth.rejeitarDisponibilidade({
+        usuarioId: req.user.id,
+        id,
+      });
+
+      return res.json(linha);
+    }
+const id = idDaRota(req.params.id);
     const linha = await db.transaction(async (tx) => {
       const atual = (await tx.query('SELECT * FROM disponibilidades WHERE id = $1 FOR UPDATE', [id])).rows[0];
       if (!atual) throw naoEncontrado();
