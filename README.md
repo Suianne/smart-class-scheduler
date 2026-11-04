@@ -43,6 +43,7 @@ Documentação complementar:
 - [Banco de dados e DER](docs/banco-de-dados.md)
 - [Contrato da API](docs/api-contrato.md)
 - [Plano de testes e evidências](docs/plano-de-testes.md)
+- [Roteiro de demonstração](docs/roteiro-demonstracao.md)
 
 ## Pré-requisitos
 
