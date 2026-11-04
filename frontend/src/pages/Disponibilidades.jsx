@@ -60,8 +60,6 @@ export default function Disponibilidades() {
   }, [perfil]);
 
   const carregarDados = useCallback(async () => {
-    await Promise.resolve();
-    setCarregando(true);
     setMensagem(null);
     try {
       if (perfil === 'coordenador' && abaAtiva === 'pendentes') {
