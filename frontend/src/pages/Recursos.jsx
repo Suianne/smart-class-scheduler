@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import {
   listarSalas,
@@ -24,7 +24,8 @@ export default function Recursos() {
     capacidade: 40,
   });
 
-  async function carregarTodos() {
+  const carregarTodos = useCallback(async () => {
+    await Promise.resolve();
     setCarregando(true);
     try {
       const [dSalas, dTurnos, dPeriodos] = await Promise.all([
@@ -40,11 +41,11 @@ export default function Recursos() {
     } finally {
       setCarregando(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     carregarTodos();
-  }, []);
+  }, [carregarTodos]);
 
   async function handleCadastrarSala(e) {
     e.preventDefault();
