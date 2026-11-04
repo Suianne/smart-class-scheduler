@@ -46,7 +46,7 @@ Documentação complementar:
 
 ## Pré-requisitos
 
-- Node.js 18 ou superior.
+- Node.js 20.19 ou superior (ou 22.12 ou superior), compatível com a versão atual do Vite.
 - npm.
 - Projeto Supabase com PostgreSQL e Authentication habilitados.
 - Acesso às credenciais do projeto Supabase.
