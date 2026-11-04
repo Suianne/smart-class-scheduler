@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import {
   listarDisponibilidades,
@@ -59,7 +59,8 @@ export default function Disponibilidades() {
     }
   }, [perfil]);
 
-  async function carregarDados() {
+  const carregarDados = useCallback(async () => {
+    await Promise.resolve();
     setCarregando(true);
     setMensagem(null);
     try {
@@ -79,11 +80,11 @@ export default function Disponibilidades() {
     } finally {
       setCarregando(false);
     }
-  }
+  }, [perfil, abaAtiva, filtroProf]);
 
   useEffect(() => {
     carregarDados();
-  }, [abaAtiva, filtroProf]);
+  }, [carregarDados]);
 
   async function handleCadastrar(e) {
     e.preventDefault();
