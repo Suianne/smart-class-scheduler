@@ -1,6 +1,6 @@
-# Plano de testes e evidências (Parte 1)
+# Plano de testes e evidências (Partes 1 e 2)
 
-Execução: `cd backend && npm test`. Resultado completo em `docs/evidencias/testes-backend.txt` (66 testes, 66 aprovados).
+Execução: `cd backend && npm test`. Resultado completo: **87 testes, 87 aprovados, 0 falhas**.
 
 Os testes usam o PostgreSQL real em memória (PGlite) carregado com os mesmos scripts de `sql/`, e um provedor de autenticação simulado. Assim validam o esquema, as restrições do banco e as regras da API sem depender do Supabase. A integração com o Supabase Auth e os testes em produção são feitos no deploy (seção 4).
 
@@ -10,9 +10,9 @@ Os testes usam o PostgreSQL real em memória (PGlite) carregado com os mesmos sc
 |---|---|---|
 | 1. Dados mínimos (3 turmas, 6 professores, 8 disciplinas, 5 salas) | Automatizado | `cadastros.test.js`, seed atende ao mínimo |
 | 2. Professor registra disponibilidade apenas às segundas e quartas | Automatizado | `disponibilidades.test.js`, cenário 2 |
-| 3. Coordenador solicita geração | Parte 2 | |
-| 4. Algoritmo respeita disponibilidades e identifica conflitos | Parte 2 (o banco já rejeita conflitos, testado em `horarios.test.js`) | |
-| 5. Coordenador ajusta e publica | Parte 2 | |
+| 3. Coordenador solicita geração automática de grade | Automatizado | `horarios.test.js`, geração de horários |
+| 4. Algoritmo respeita disponibilidades e identifica conflitos | Automatizado | `horarios.test.js`, geração e consulta de conflitos (`GET /horarios/conflitos`) |
+| 5. Coordenador ajusta alocação e publica versão oficial | Automatizado | `horarios.test.js`, edição manual (`PUT /horarios/:id`) e publicação (`POST /horarios/versoes/:id/publicar`) |
 | 6. Aluno visualiza o horário e não consegue alterá-lo | Automatizado (consulta e bloqueio) | `horarios.test.js` cenário 6, `seguranca.test.js` |
 | 7. Professor registra nova disponibilidade sem alterar a grade publicada | Automatizado | `disponibilidades.test.js`, cenário 7 |
 
@@ -25,6 +25,10 @@ Os testes usam o PostgreSQL real em memória (PGlite) carregado com os mesmos sc
 | Professores e alunos | Criação coordenada (Auth, usuário e perfil), reversão da conta de Auth quando o banco falha, desativação e remoção. |
 | Disponibilidades | Registro, edição, sobreposição, adjacência, solicitação pendente, aprovação, rejeição, coleta encerrada, histórico. |
 | Consulta de horários | Grade do aluno, do professor e do coordenador, rascunho invisível para aluno, turma de outro aluno bloqueada. |
+| Geração de horários | Proposta gerada respeitando disponibilidade e turnos, identificação de aulas não alocadas e gravação em rascunho. |
+| Edição de horários | Ajuste manual de aula pelo coordenador, bloqueio de conflitos e histórico registrado. |
+| Publicação de horários | Transição para versão publicada, bloqueio de grade incompleta, arquivamento automático da versão anterior. |
+| Consulta de conflitos | Diagnóstico detalhado de sobreposições e indisponibilidades docentes. |
 | Banco | Restrições de exclusão de professor, sala e turma. Uma única versão publicada por período. Carga semanal cabe no turno. |
 | Relatório | Resumo geral e acesso restrito ao coordenador. |
 
@@ -34,8 +38,8 @@ Os testes usam o PostgreSQL real em memória (PGlite) carregado com os mesmos sc
 |---|---|---|
 | Acesso sem login | Todas as rotas protegidas sem token | 401 |
 | Token falso ou adulterado | Variações de token | 401 |
-| Aluno ou professor chamando rotas de coordenador direto na API | 26 rotas de coordenador, com os dois perfis | 403 |
-| Alteração da grade por aluno ou professor | Tentativas de PUT, POST e DELETE em `/horarios`, com a tabela comparada antes e depois | Grade idêntica |
+| Aluno ou professor chamando rotas de coordenador direto na API | Todas as rotas administrativas e de coordenação | 403 |
+| Alteração da grade por aluno ou professor | Tentativas de PUT, POST e DELETE em `/horarios`, com a tabela comparada antes e depois | Grade idêntica (403) |
 | Professor mexendo na disponibilidade de outro | PUT, DELETE e POST com `professor_id` alheio | 403, dados intactos |
 | Escalada de privilégio pelo corpo | `perfil`, `auth_id`, `ativo` e `status` enviados no corpo | 400 e nenhuma alteração |
 | SQL injection | Payloads em ids, filtros, corpo e login | 400, 401 ou tratado como texto, tabelas intactas |
@@ -51,6 +55,6 @@ Os testes usam o PostgreSQL real em memória (PGlite) carregado com os mesmos sc
 ## 4. Verificações manuais após o deploy
 
 1. `GET /api/health` responde `ok` na URL do Render (a primeira chamada pode demorar no plano gratuito).
-2. Login com os três perfis no frontend publicado.
+2. Login com os três perfis no frontend publicado (Vercel).
 3. Com a chave anon, uma consulta direta à API REST do Supabase (`/rest/v1/usuarios`) retorna lista vazia, confirmando o RLS.
 4. Repetir o cenário da seção 1 de ponta a ponta e anexar capturas de tela à entrega.

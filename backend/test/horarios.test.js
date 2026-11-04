@@ -752,3 +752,35 @@ describe('Publicacao de horarios', () => {
     assert.equal(resposta.status, 409);
   });
 });
+
+describe('Consulta de conflitos', () => {
+  let amb;
+  before(async () => {
+    amb = await criarAmbiente();
+  });
+  beforeEach(async () => {
+    await amb.resetar();
+  });
+
+  test('coordenador consulta conflitos de uma versao e recebe diagnostico completo', async () => {
+    const gerado = await como(amb, USUARIOS.coord).post('/api/horarios/gerar', {
+      periodo: '2026.2',
+    });
+    assert.equal(gerado.status, 201);
+    const versaoId = gerado.body.versao.id;
+
+    const res = await como(amb, USUARIOS.coord).get(`/api/horarios/conflitos?versao_id=${versaoId}`);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.versao.id, versaoId);
+    assert.ok(Array.isArray(res.body.conflitos));
+    assert.ok(Array.isArray(res.body.nao_alocadas));
+  });
+
+  test('aluno e professor nao acessam rota de conflitos (403)', async () => {
+    const rAluno = await como(amb, USUARIOS.alunoA1).get('/api/horarios/conflitos');
+    assert.equal(rAluno.status, 403);
+    const rProf = await como(amb, USUARIOS.ana).get('/api/horarios/conflitos');
+    assert.equal(rProf.status, 403);
+  });
+});
+
