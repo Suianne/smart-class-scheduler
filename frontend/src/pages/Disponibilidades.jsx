@@ -81,8 +81,35 @@ export default function Disponibilidades() {
   }, [perfil, abaAtiva, filtroProf]);
 
   useEffect(() => {
-    carregarDados();
-  }, [carregarDados]);
+    let ativo = true;
+    const requisicao = perfil === 'coordenador' && abaAtiva === 'pendentes'
+      ? listarDisponibilidadesPendentes()
+      : listarDisponibilidades(
+          perfil === 'coordenador' && filtroProf
+            ? { professor_id: filtroProf }
+            : {}
+        );
+
+    requisicao
+      .then((dados) => {
+        if (!ativo) return;
+        if (perfil === 'coordenador' && abaAtiva === 'pendentes') {
+          setPendentes(Array.isArray(dados) ? dados : []);
+        } else {
+          setDisponibilidades(Array.isArray(dados) ? dados : []);
+        }
+      })
+      .catch((err) => {
+        if (ativo) setMensagem({ tipo: 'erro', texto: err.message });
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [perfil, abaAtiva, filtroProf]);
 
   async function handleCadastrar(e) {
     e.preventDefault();
