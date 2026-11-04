@@ -82,8 +82,6 @@ export default function Horarios() {
 
   // Função para buscar horários
   const carregarGrade = useCallback(async (versaoId = versaoIdSelecionada) => {
-    await Promise.resolve();
-    setCarregando(true);
     try {
       if (perfil === 'aluno') {
         const dados = await obterHorarioMinhaTurma();
