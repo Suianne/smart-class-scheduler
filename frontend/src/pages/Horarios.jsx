@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import {
   obterHorarioMinhaTurma,
@@ -81,7 +81,8 @@ export default function Horarios() {
   }, [perfil]);
 
   // Função para buscar horários
-  async function carregarGrade(versaoId = versaoIdSelecionada) {
+  const carregarGrade = useCallback(async (versaoId = versaoIdSelecionada) => {
+    await Promise.resolve();
     setCarregando(true);
     try {
       if (perfil === 'aluno') {
@@ -112,11 +113,11 @@ export default function Horarios() {
     } finally {
       setCarregando(false);
     }
-  }
+  }, [perfil, tipoVisualizacao, turmaSelecionada, professorSelecionado, versaoIdSelecionada]);
 
   useEffect(() => {
     carregarGrade();
-  }, [perfil, tipoVisualizacao, turmaSelecionada, professorSelecionado]);
+  }, [carregarGrade]);
 
   // Horários únicos presentes nas aulas (para linhas da tabela)
   const slotsHorarios = useMemo(() => {
@@ -323,7 +324,7 @@ export default function Horarios() {
             </thead>
             <tbody>
               {slotsHorarios.map((slot) => {
-                const [hInicio, hFim] = slot.split(' - ');
+                const [hInicio] = slot.split(' - ');
                 return (
                   <tr key={slot}>
                     <td className="celula-horario">{slot}</td>
