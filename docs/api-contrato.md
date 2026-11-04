@@ -102,13 +102,21 @@ Para cada recurso acima: `POST /<recurso>`, `PUT /<recurso>/:id` (parcial, ao me
 |---|---|---|---|
 | GET | `/relatorios/resumo` | C | Totais, aulas semanais por turma e por professor, horas disponíveis, versões por status e pendências. |
 
-## Parte 2 (a implementar pela dupla)
+## Parte 2 (implementada)
 
-Devem ser adicionadas em `backend/src/routes/horarios.js`, que já exige autenticação em todas as rotas do router. Cada rota abaixo deve usar `somenteCoordenador` e gravar o histórico com `registrarHistorico`.
+As rotas de geração, consulta de conflitos, edição e publicação estão implementadas em `backend/src/routes/horarios.js`. Todo o router exige autenticação; operações de geração, edição, publicação e consulta administrativa de conflitos exigem perfil de coordenador.
 
-| Método | Rota | Acesso | Observação |
+| Método | Rota | Acesso | Comportamento |
 |---|---|---|---|
-| POST | `/horarios/gerar` | C | Cria versão em rascunho com a proposta e devolve conflitos e aulas não alocadas. Insumos: `turma_disciplinas`, `disponibilidades` com status `aprovada`, `turnos` e `salas`. |
-| PUT | `/horarios/:id` | C | Altera uma alocação. O banco rejeita conflitos (erro 23P01, já traduzido para 409). |
-| POST | `/horarios/versoes/:id/publicar` | C | Em transação: arquiva a versão publicada anterior do período e publica a nova. |
-| GET | `/horarios/conflitos` | C | Conflitos de uma versão. |
+| POST | `/horarios/gerar` | C | Recebe `{ periodo }`, cria uma versão em rascunho e retorna aulas alocadas, conflitos e aulas não alocadas. |
+| GET | `/horarios/conflitos` | C | Consulta conflitos e aulas não alocadas. Aceita `versao_id` ou `periodo`; sem filtro, usa a versão mais recente. |
+| PUT | `/horarios/:id` | C | Edita uma aula de versão não publicada. Valida campos permitidos, disponibilidade, vínculos e conflitos; registra histórico. |
+| POST | `/horarios/versoes/:id/publicar` | C | Publica uma versão completa. Arquiva a versão anteriormente publicada do mesmo período e registra histórico. |
+
+A publicação é recusada se a versão não estiver em rascunho ou em revisão, se não houver aulas previstas/alocadas ou se a quantidade alocada divergir da carga curricular prevista. O banco também impede sobreposição de professor, sala ou turma na mesma versão.
+
+## Observações de integração
+
+- O frontend envia o token de acesso no cabeçalho `Authorization: Bearer <access_token>`.
+- A URL base da API é configurada no frontend pela variável `VITE_API_URL` (por exemplo, `http://localhost:3000/api`).
+- No deploy, configure `CORS_ORIGINS` no backend com a origem exata do frontend.
