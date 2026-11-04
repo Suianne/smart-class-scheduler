@@ -47,7 +47,7 @@ Documentação complementar:
 
 ## Pré-requisitos
 
-- Node.js 20.19 ou superior (ou 22.12 ou superior), compatível com a versão atual do Vite.
+- Node.js 20.19+ ou 22.12+, conforme os requisitos da versão atual do Vite.
 - npm.
 - Projeto Supabase com PostgreSQL e Authentication habilitados.
 - Acesso às credenciais do projeto Supabase.
@@ -67,7 +67,7 @@ Preencha o arquivo `backend/.env` com as credenciais do seu projeto Supabase:
 
 | Variável | Finalidade |
 |---|---|
-| `NODE_ENV` | Ambiente; use `development) localmente. |
+| `NODE_ENV` | Ambiente; use `development` localmente. |
 | `PORT` | Porta HTTP da API (padrão: 3000). |
 | `DATABASE_URL` | Connection string PostgreSQL do Supabase. |
 | `SUPABASE_URL` | URL do projeto Supabase. |
