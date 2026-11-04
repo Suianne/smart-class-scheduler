@@ -76,7 +76,7 @@ export default function Relatorios() {
             <div style={{ background: 'white', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
               <span style={{ fontSize: '0.8rem', color: '#d97706', fontWeight: 600, textTransform: 'uppercase' }}>Pendências Disp.</span>
               <div style={{ fontSize: '2rem', fontWeight: 700, color: '#d97706', marginTop: '0.25rem' }}>
-                {resumo.pendencias?.disponibilidades ?? 0}
+                {resumo.disponibilidades_pendentes ?? 0}
               </div>
             </div>
           </div>
@@ -94,9 +94,9 @@ export default function Relatorios() {
                   </tr>
                 </thead>
                 <tbody>
-                  {resumo.carga_professores?.map((cp) => (
+                  {resumo.aulas_semanais_por_professor?.map((cp) => (
                     <tr key={cp.professor_id} style={{ borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem' }}>
-                      <td style={{ padding: '0.6rem' }}><strong>{cp.professor_nome}</strong></td>
+                      <td style={{ padding: '0.6rem' }}><strong>{cp.professor}</strong></td>
                       <td style={{ padding: '0.6rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <div style={{ flex: 1, background: '#f1f5f9', height: '10px', borderRadius: '999px', overflow: 'hidden' }}>
@@ -129,9 +129,9 @@ export default function Relatorios() {
                   </tr>
                 </thead>
                 <tbody>
-                  {resumo.carga_turmas?.map((ct) => (
+                  {resumo.aulas_semanais_por_turma?.map((ct) => (
                     <tr key={ct.turma_id} style={{ borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem' }}>
-                      <td style={{ padding: '0.6rem' }}><strong>{ct.turma_nome}</strong></td>
+                      <td style={{ padding: '0.6rem' }}><strong>{ct.turma}</strong></td>
                       <td style={{ padding: '0.6rem', color: '#64748b' }}>{ct.turno}</td>
                       <td style={{ padding: '0.6rem' }}>{ct.aulas_semanais} aulas / semana</td>
                     </tr>
