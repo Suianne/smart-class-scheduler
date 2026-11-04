@@ -25,8 +25,6 @@ export default function Recursos() {
   });
 
   const carregarTodos = useCallback(async () => {
-    await Promise.resolve();
-    setCarregando(true);
     try {
       const [dSalas, dTurnos, dPeriodos] = await Promise.all([
         listarSalas(),
