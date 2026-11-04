@@ -477,6 +477,145 @@ export function rotasHorarios({ db, auth }) {
     }),
   );
 
+  
+  // Publica uma versao de horarios.
+  // Somente o coordenador pode tornar uma grade oficial.
+  r.post(
+    '/versoes/:id/publicar',
+    somenteCoordenador,
+    assincrono(async (req, res) => {
+      const versaoId = idDaRota(req.params.id);
+
+      const resultado = await db.transaction(async (tx) => {
+        // 1. Busca e bloqueia a versao durante a publicacao.
+        const versao = (
+          await tx.query(
+            `SELECT id, periodo, status
+               FROM versoes_horario
+              WHERE id = $1
+              FOR UPDATE`,
+            [versaoId],
+          )
+        ).rows[0];
+
+        if (!versao) {
+          throw naoEncontrado('Versao de horario nao encontrada.');
+        }
+
+        // 2. Somente rascunhos e versoes em revisao podem ser publicados.
+        if (!['rascunho', 'em_revisao'].includes(versao.status)) {
+          throw conflito(
+            'Somente versoes em rascunho ou em revisao podem ser publicadas.',
+          );
+        }
+
+        // 3. Compara a carga prevista com as aulas efetivamente alocadas.
+        // A comparacao e feita individualmente por turma e disciplina.
+        // Aulas canceladas nao contam como aulas alocadas.
+        const verificacao = (
+          await tx.query(
+            `WITH previstas AS (
+               SELECT
+                 td.turma_id,
+                 td.disciplina_id,
+                 SUM(td.carga_semanal)::int AS quantidade
+               FROM turma_disciplinas td
+               JOIN turmas t ON t.id = td.turma_id
+               WHERE t.periodo_letivo = $1
+               GROUP BY td.turma_id, td.disciplina_id
+             ),
+             alocadas AS (
+               SELECT
+                 h.turma_id,
+                 h.disciplina_id,
+                 COUNT(*)::int AS quantidade
+               FROM horarios h
+               WHERE h.versao_id = $2
+                 AND h.situacao <> 'cancelada'
+               GROUP BY h.turma_id, h.disciplina_id
+             )
+             SELECT
+               COALESCE(SUM(p.quantidade), 0)::int AS total_previsto,
+               COALESCE(SUM(a.quantidade), 0)::int AS total_alocado,
+               COUNT(*) FILTER (
+                 WHERE COALESCE(p.quantidade, 0)
+                       <> COALESCE(a.quantidade, 0)
+               )::int AS divergencias
+             FROM previstas p
+             FULL OUTER JOIN alocadas a
+               ON a.turma_id = p.turma_id
+              AND a.disciplina_id = p.disciplina_id`,
+            [versao.periodo, versaoId],
+          )
+        ).rows[0];
+
+        const totalPrevisto = Number(verificacao.total_previsto);
+        const totalAlocado = Number(verificacao.total_alocado);
+        const divergencias = Number(verificacao.divergencias);
+
+        if (totalPrevisto === 0 || totalAlocado === 0) {
+          throw conflito(
+            'Nao e possivel publicar uma versao sem aulas previstas e alocadas.',
+          );
+        }
+
+        if (divergencias > 0 || totalPrevisto !== totalAlocado) {
+          throw conflito(
+            `Grade incompleta: ${totalPrevisto} aulas previstas e ${totalAlocado} alocadas. Corrija as pendencias antes de publicar.`,
+          );
+        }
+
+        // 4. Arquiva a versao anteriormente publicada no mesmo periodo.
+        const anteriores = (
+          await tx.query(
+            `UPDATE versoes_horario
+                SET status = 'arquivada'
+              WHERE periodo = $1
+                AND status = 'publicada'
+                AND id <> $2
+              RETURNING id`,
+            [versao.periodo, versaoId],
+          )
+        ).rows;
+
+        // 5. Publica a nova versao.
+        const publicada = (
+          await tx.query(
+            `UPDATE versoes_horario
+                SET status = 'publicada',
+                    publicada_em = now()
+              WHERE id = $1
+              RETURNING id, periodo, status, data, publicada_em`,
+            [versaoId],
+          )
+        ).rows[0];
+
+        // 6. Registra a publicacao no historico.
+        await registrarHistorico(tx, {
+          usuarioId: req.user.id,
+          operacao: 'publicar_horario',
+          tabela: 'versoes_horario',
+          registroId: versaoId,
+          valores: {
+            periodo: versao.periodo,
+            status_anterior: versao.status,
+            status_novo: 'publicada',
+            versoes_arquivadas: anteriores.map((v) => v.id),
+            total_aulas: totalAlocado,
+          },
+        });
+
+        return publicada;
+      });
+
+      res.json({
+        mensagem: 'Grade publicada com sucesso.',
+        versao: resumoVersao(resultado),
+      });
+    }),
+  );
+
+
   // =========================================================
   // PUT /api/horarios/:id
   // Edita manualmente uma aula de uma versao nao publicada.

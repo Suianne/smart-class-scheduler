@@ -11,7 +11,7 @@ export const config = {
   // Chave administrativa: usada SOMENTE no backend. Nunca expor no frontend.
   supabaseServiceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY,
   // Origens permitidas no CORS, separadas por virgula (URL do frontend na Vercel).
-  corsOrigins: (env.CORS_ORIGINS || 'http://localhost:5173,http://localhost:3001')
+  corsOrigins: (env.CORS_ORIGINS || 'http://localhost:5174,http://localhost:3001')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),

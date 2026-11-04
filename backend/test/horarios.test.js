@@ -540,3 +540,215 @@ test('nao permite transferir aula para turma de outro periodo letivo', async () 
   assert.equal(salva.turma_id, 1);
 });
 });
+
+
+// ============================================================
+// PUBLICACAO DE HORARIOS
+// ============================================================
+
+async function criarGradeCompleta(amb) {
+  const disciplinas = (
+    await amb.db.query(`
+      SELECT
+        t.id AS turma_id,
+        td.disciplina_id,
+        td.professor_id,
+        td.carga_semanal
+      FROM turma_disciplinas td
+      JOIN turmas t ON t.id = td.turma_id
+      WHERE t.periodo_letivo = '2026.2'
+      ORDER BY t.id, td.disciplina_id
+    `)
+  ).rows;
+
+  const salas = (
+    await amb.db.query(
+      'SELECT id FROM salas ORDER BY id'
+    )
+  ).rows;
+
+  const dias = [
+    'segunda',
+    'terca',
+    'quarta',
+    'quinta',
+    'sexta',
+    'sabado',
+  ];
+
+  const aulas = [];
+  let indice = 0;
+
+  for (const item of disciplinas) {
+    for (let i = 0; i < Number(item.carga_semanal); i++) {
+      const dia = dias[Math.floor(indice / 9)];
+      const horario = indice % 9;
+
+      if (!dia) {
+        throw new Error('Quantidade de aulas excede os horarios de teste.');
+      }
+
+      const horaInicio = 7 + horario;
+
+      aulas.push({
+        turma: item.turma_id,
+        disciplina: item.disciplina_id,
+        professor: item.professor_id,
+        sala: salas[indice % salas.length].id,
+        dia,
+        inicio: `${String(horaInicio).padStart(2, '0')}:00`,
+        fim: `${String(horaInicio + 1).padStart(2, '0')}:00`,
+      });
+
+      indice++;
+    }
+  }
+
+  return criarVersaoComAulas(amb, {
+    status: 'rascunho',
+    periodo: '2026.2',
+    aulas,
+  });
+}
+
+describe('Publicacao de horarios', () => {
+  let amb;
+
+  before(async () => {
+    amb = await criarAmbiente();
+  });
+
+  beforeEach(async () => {
+    await amb.resetar();
+  });
+
+  test('coordenador publica uma grade completa', async () => {
+    const versaoId = await criarGradeCompleta(amb);
+
+    const resposta = await como(amb, USUARIOS.coord)
+      .post(`/api/horarios/versoes/${versaoId}/publicar`);
+
+    assert.equal(resposta.status, 200);
+    assert.equal(resposta.body.versao.status, 'publicada');
+
+    const versao = (
+      await amb.db.query(
+        'SELECT status, publicada_em FROM versoes_horario WHERE id = $1',
+        [versaoId],
+      )
+    ).rows[0];
+
+    assert.equal(versao.status, 'publicada');
+    assert.ok(versao.publicada_em);
+
+    assert.equal(
+      await contar(
+        amb,
+        'historico_alteracoes',
+        "operacao = 'publicar_horario'",
+      ),
+      1,
+    );
+  });
+
+  test('nao permite publicar uma grade incompleta', async () => {
+    const versaoId = await criarVersaoComAulas(amb, {
+      status: 'rascunho',
+      aulas: [
+        {
+          turma: 1,
+          disciplina: 1,
+          professor: 1,
+          sala: 1,
+          dia: 'segunda',
+          inicio: '08:00',
+          fim: '09:00',
+        },
+      ],
+    });
+
+    const resposta = await como(amb, USUARIOS.coord)
+      .post(`/api/horarios/versoes/${versaoId}/publicar`);
+
+    assert.equal(resposta.status, 409);
+
+    const versao = (
+      await amb.db.query(
+        'SELECT status FROM versoes_horario WHERE id = $1',
+        [versaoId],
+      )
+    ).rows[0];
+
+    assert.equal(versao.status, 'rascunho');
+  });
+
+  test('arquiva a grade anterior ao publicar uma nova', async () => {
+    const anteriorId = await criarVersaoComAulas(amb, {
+      status: 'publicada',
+    });
+
+    const novaId = await criarGradeCompleta(amb);
+
+    const resposta = await como(amb, USUARIOS.coord)
+      .post(`/api/horarios/versoes/${novaId}/publicar`);
+
+    assert.equal(resposta.status, 200);
+
+    const anterior = (
+      await amb.db.query(
+        'SELECT status FROM versoes_horario WHERE id = $1',
+        [anteriorId],
+      )
+    ).rows[0];
+
+    const nova = (
+      await amb.db.query(
+        'SELECT status FROM versoes_horario WHERE id = $1',
+        [novaId],
+      )
+    ).rows[0];
+
+    assert.equal(anterior.status, 'arquivada');
+    assert.equal(nova.status, 'publicada');
+  });
+
+  test('nao permite que professor ou aluno publique uma grade', async () => {
+    const versaoId = await criarGradeCompleta(amb);
+
+    const professor = await como(amb, USUARIOS.ana)
+      .post(`/api/horarios/versoes/${versaoId}/publicar`);
+
+    const aluno = await como(amb, USUARIOS.alunoA1)
+      .post(`/api/horarios/versoes/${versaoId}/publicar`);
+
+    assert.equal(professor.status, 403);
+    assert.equal(aluno.status, 403);
+
+    const versao = (
+      await amb.db.query(
+        'SELECT status FROM versoes_horario WHERE id = $1',
+        [versaoId],
+      )
+    ).rows[0];
+
+    assert.equal(versao.status, 'rascunho');
+  });
+
+  test('retorna 404 ao tentar publicar uma versao inexistente', async () => {
+    const resposta = await como(amb, USUARIOS.coord)
+      .post('/api/horarios/versoes/999999/publicar');
+
+    assert.equal(resposta.status, 404);
+  });
+
+  test('nao permite publicar novamente uma versao ja publicada', async () => {
+    const versaoId = await criarVersaoComAulas(amb, {
+      status: 'publicada',
+    });
+
+    const resposta = await como(amb, USUARIOS.coord)
+      .post(`/api/horarios/versoes/${versaoId}/publicar`);
+
+    assert.equal(resposta.status, 409);
+  });
+});
