@@ -29,6 +29,7 @@ export default function Horarios() {
 
   const [aulas, setAulas] = useState([]);
   const [versao, setVersao] = useState(null);
+  const [versaoIdSelecionada, setVersaoIdSelecionada] = useState(null);
   const [turmas, setTurmas] = useState([]);
   const [professores, setProfessores] = useState([]);
   const [salas, setSalas] = useState([]);
@@ -80,7 +81,7 @@ export default function Horarios() {
   }, [perfil]);
 
   // Função para buscar horários
-  async function carregarGrade() {
+  async function carregarGrade(versaoId = versaoIdSelecionada) {
     setCarregando(true);
     try {
       if (perfil === 'aluno') {
@@ -94,11 +95,11 @@ export default function Horarios() {
         setTurmasAtribuidas(dados.turmas_atribuidas || []);
       } else if (perfil === 'coordenador') {
         if (tipoVisualizacao === 'turma' && turmaSelecionada) {
-          const dados = await obterHorarioMinhaTurma({ turma_id: turmaSelecionada });
+          const dados = await obterHorarioMinhaTurma({ turma_id: turmaSelecionada, versao_id: versaoId || undefined });
           setAulas(dados.aulas || []);
           setVersao(dados.versao);
         } else if (tipoVisualizacao === 'professor' && professorSelecionado) {
-          const dados = await obterHorarioProfessor({ professor_id: professorSelecionado });
+          const dados = await obterHorarioProfessor({ professor_id: professorSelecionado, versao_id: versaoId || undefined });
           setAulas(dados.aulas || []);
           setVersao(dados.versao);
           setTurmasAtribuidas(dados.turmas_atribuidas || []);
@@ -141,7 +142,8 @@ export default function Horarios() {
           res.nao_alocadas?.length > 0 ? `${res.nao_alocadas.length} pendências de alocação.` : ''
         }`,
       });
-      await carregarGrade();
+      setVersaoIdSelecionada(res.versao.id);
+      await carregarGrade(res.versao.id);
     } catch (err) {
       setMensagem({ tipo: 'erro', texto: err.message });
     } finally {
@@ -173,8 +175,9 @@ export default function Horarios() {
     setProcessando(true);
     try {
       await publicarVersao(versao.id);
+      setVersaoIdSelecionada(null);
       setMensagem({ tipo: 'sucesso', texto: 'Grade publicada com sucesso! Agora está oficial para todos os alunos e professores.' });
-      await carregarGrade();
+      await carregarGrade(null);
     } catch (err) {
       setMensagem({ tipo: 'erro', texto: 'Não foi possível publicar: ' + err.message });
     } finally {
