@@ -42,8 +42,30 @@ export default function Recursos() {
   }, []);
 
   useEffect(() => {
-    carregarTodos();
-  }, [carregarTodos]);
+    let ativo = true;
+
+    Promise.all([
+      listarSalas(),
+      listarTurnos(),
+      listarPeriodosLetivos(),
+    ])
+      .then(([dSalas, dTurnos, dPeriodos]) => {
+        if (!ativo) return;
+        setSalas(Array.isArray(dSalas) ? dSalas : dSalas.salas || []);
+        setTurnos(Array.isArray(dTurnos) ? dTurnos : dTurnos.turnos || []);
+        setPeriodos(Array.isArray(dPeriodos) ? dPeriodos : dPeriodos.periodos || []);
+      })
+      .catch((err) => {
+        if (ativo) setMensagem({ tipo: 'erro', texto: err.message });
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   async function handleCadastrarSala(e) {
     e.preventDefault();
