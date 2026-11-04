@@ -1,7 +1,9 @@
 
 import { obterSessao } from './sessao';
 
-const API_URL = import.meta.env.VITE_API_URL;
+// Em desenvolvimento local, usa a API Express na porta 3000.
+// Em produção, VITE_API_URL deve apontar para a URL pública terminada em /api.
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/$/, '');
 
 export async function requisicao(endpoint, opcoes = {}) {
   const dadosSessao = obterSessao();

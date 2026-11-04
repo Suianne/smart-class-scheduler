@@ -19,12 +19,18 @@ docs/       Requisitos, regras de negócio, DER, contrato da API, plano de teste
 
 Documentação: [requisitos](docs/requisitos.md), [regras de negócio](docs/regras-negocio.md), [banco de dados e DER](docs/banco-de-dados.md), [contrato da API](docs/api-contrato.md), [plano de testes](docs/plano-de-testes.md), [divisão de tarefas](docs/divisao-de-tarefas.md).
 
-## Situação
+## Situação do projeto
 
-| Parte | Estado |
-|---|---|
-| Banco, autenticação, permissões, cadastros, disponibilidades, consulta de horários, relatório, testes | Concluída (Parte 1) |
-| Algoritmo de geração, rotas de versões, conflitos e publicação, frontend completo, testes e validação | Concluída (Parte 2) |
+| Área | Implementação no repositório | Validação pendente |
+|---|---|---|
+| Banco, autenticação, permissões e cadastros | Implementados | Regressão integrada após as alterações recentes |
+| Disponibilidades docentes | CRUD, aprovação/rejeição e histórico implementados | Cenários reais de aprovação e rejeição |
+| Geração de horários | Algoritmo, criação de rascunho e diagnóstico implementados | Testes de carga, casos extremos e validação com dados reais |
+| Versões e publicação | Fluxo de rascunho/publicação implementado | Teste ponta a ponta com coordenador, professor e aluno |
+| Frontend | Telas e serviços principais implementados | Testes de navegação e integração com backend implantado |
+| Relatórios e exportação | Rotas/tela implementadas | Conferência dos dados e formatos gerados |
+
+A implementação de uma funcionalidade não significa que sua validação ponta a ponta esteja concluída. Consulte o [plano de testes](docs/plano-de-testes.md) e o resultado da integração contínua antes de considerar uma etapa encerrada.
 
 ## Como executar
 
@@ -74,7 +80,7 @@ No plano gratuito o serviço suspende por inatividade, e a primeira resposta pod
 
 ### 5. Deploy do frontend na Vercel (Parte 2)
 
-Publique a pasta `frontend/` e configure a URL do backend. O frontend nunca recebe a chave `service_role`. Para login, basta chamar `POST /api/auth/login` e enviar o `access_token` no cabeçalho `Authorization: Bearer`.
+Publique a pasta `frontend/` e configure a variável `VITE_API_URL` com a URL pública do backend terminada em `/api` (exemplo em `frontend/.env.example`). O frontend nunca recebe a chave `service_role`. Para login, basta chamar `POST /api/auth/login` e enviar o `access_token` no cabeçalho `Authorization: Bearer`.
 
 ## Segurança
 
