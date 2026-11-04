@@ -1,6 +1,39 @@
 import { useEffect, useState } from 'react';
 import { obterResumoRelatorio } from '../services/relatorios';
 
+function exportarCsv(resumo) {
+  const escapar = (valor) => `"${String(valor ?? '').replace(/"/g, '""')}"`;
+  const linhas = [
+    ['RELATORIO GERAL E INDICADORES'],
+    ['Indicador', 'Quantidade'],
+    ['Professores', resumo.totais?.professores ?? 0],
+    ['Alunos', resumo.totais?.alunos ?? 0],
+    ['Turmas', resumo.totais?.turmas ?? 0],
+    ['Disciplinas', resumo.totais?.disciplinas ?? 0],
+    ['Salas', resumo.totais?.salas ?? 0],
+    ['Disponibilidades pendentes', resumo.disponibilidades_pendentes ?? 0],
+    [],
+    ['CARGA HORARIA SEMANAL POR PROFESSOR'],
+    ['Professor', 'Aulas semanais'],
+    ...(resumo.aulas_semanais_por_professor ?? []).map((item) => [item.professor, item.aulas_semanais]),
+    [],
+    ['CARGA HORARIA SEMANAL POR TURMA'],
+    ['Turma', 'Turno', 'Aulas semanais'],
+    ...(resumo.aulas_semanais_por_turma ?? []).map((item) => [item.turma, item.turno, item.aulas_semanais]),
+  ];
+  const csv = '\\uFEFF' + linhas.map((linha) => linha.map(escapar).join(';')).join('\\r\\n');
+  const arquivo = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(arquivo);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'relatorio-geral.csv';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+
 export default function Relatorios() {
   const [resumo, setResumo] = useState(null);
   const [carregando, setCarregando] = useState(true);
@@ -25,7 +58,32 @@ export default function Relatorios() {
       <div style={{ marginBottom: '1.5rem' }}>
         <h2 style={{ fontSize: '1.75rem', color: '#1e293b', margin: '0 0 0.25rem 0' }}>Relatório Geral e Indicadores</h2>
         <p style={{ color: '#64748b', margin: 0 }}>Visão executiva da instituição: cargas horárias, alocações e pendências.</p>
+        <div className="acoes-relatorio" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => exportarCsv(resumo)}
+            disabled={!resumo}
+            style={{ border: 0, borderRadius: '8px', padding: '0.7rem 1rem', background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer' }}
+          >
+            Exportar CSV (Excel)
+          </button>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            disabled={!resumo}
+            style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '0.7rem 1rem', background: 'white', color: '#1e293b', fontWeight: 600, cursor: 'pointer' }}
+          >
+            Imprimir / Salvar em PDF
+          </button>
+        </div>
       </div>
+      <style>{`
+        @media print {
+          .acoes-relatorio { display: none !important; }
+          body { background: white !important; }
+          section { max-width: 100% !important; padding: 0 !important; }
+        }
+      `}</style>
 
       {carregando && <p>Carregando dados estatísticos...</p>}
       {erro && (
