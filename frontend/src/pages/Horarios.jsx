@@ -29,6 +29,7 @@ export default function Horarios() {
 
   const [aulas, setAulas] = useState([]);
   const [versao, setVersao] = useState(null);
+  const [versaoVisualizadaId, setVersaoVisualizadaId] = useState(null);
   const [turmas, setTurmas] = useState([]);
   const [professores, setProfessores] = useState([]);
   const [salas, setSalas] = useState([]);
@@ -94,11 +95,11 @@ export default function Horarios() {
         setTurmasAtribuidas(dados.turmas_atribuidas || []);
       } else if (perfil === 'coordenador') {
         if (tipoVisualizacao === 'turma' && turmaSelecionada) {
-          const dados = await obterHorarioMinhaTurma({ turma_id: turmaSelecionada });
+          const dados = await obterHorarioMinhaTurma({ turma_id: turmaSelecionada, versao_id: versaoVisualizadaId || undefined });
           setAulas(dados.aulas || []);
           setVersao(dados.versao);
         } else if (tipoVisualizacao === 'professor' && professorSelecionado) {
-          const dados = await obterHorarioProfessor({ professor_id: professorSelecionado });
+          const dados = await obterHorarioProfessor({ professor_id: professorSelecionado, versao_id: versaoVisualizadaId || undefined });
           setAulas(dados.aulas || []);
           setVersao(dados.versao);
           setTurmasAtribuidas(dados.turmas_atribuidas || []);
@@ -115,7 +116,7 @@ export default function Horarios() {
 
   useEffect(() => {
     carregarGrade();
-  }, [perfil, tipoVisualizacao, turmaSelecionada, professorSelecionado]);
+  }, [perfil, tipoVisualizacao, turmaSelecionada, professorSelecionado, versaoVisualizadaId]);
 
   // Horários únicos presentes nas aulas (para linhas da tabela)
   const slotsHorarios = useMemo(() => {
@@ -134,6 +135,8 @@ export default function Horarios() {
     setMensagem(null);
     try {
       const res = await gerarHorarios({ periodo: periodoGeracao });
+      setVersaoVisualizadaId(res.versao?.id ?? null);
+      setVersao(res.versao ?? null);
       setModalGerar(false);
       setMensagem({
         tipo: 'sucesso',
