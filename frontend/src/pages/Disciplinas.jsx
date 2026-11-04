@@ -37,8 +37,25 @@ export default function Disciplinas() {
   }, []);
 
   useEffect(() => {
-    carregar();
-  }, [carregar]);
+    let ativo = true;
+
+    listarDisciplinas()
+      .then((dados) => {
+        if (!ativo) return;
+        setDisciplinas(Array.isArray(dados) ? dados : dados.disciplinas || []);
+        setErro('');
+      })
+      .catch((err) => {
+        if (ativo) setErro(err.message);
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, []);
 
   async function handleCadastrar(e) {
     e.preventDefault();
