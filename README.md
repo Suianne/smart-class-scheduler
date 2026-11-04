@@ -1,90 +1,213 @@
-# SUCELSO TECH | Sistema Inteligente de Horários Escolares
+# SUCELSO TECH — Smart Class Scheduler
 
-Aplicação full stack para organizar horários escolares com base na disponibilidade dos professores. Somente coordenadores criam, aprovam e publicam a grade oficial.
+Sistema web para gestão de horários escolares. O coordenador administra cadastros, disponibilidades e versões de grade; professores registram disponibilidades e consultam suas aulas; alunos consultam a grade publicada de sua turma.
 
-| Camada | Tecnologia | Hospedagem |
-|---|---|---|
-| Frontend | HTML/CSS/JS ou React | Vercel |
-| Backend | Node.js + Express | Render |
-| Banco e autenticação | PostgreSQL + Supabase Auth | Supabase |
+## Funcionalidades
 
-## Estrutura
+- Autenticação por e-mail e senha com Supabase Auth.
+- Perfis de acesso: coordenador, professor e aluno.
+- Gestão de professores, alunos, disciplinas, salas, turmas, turnos e períodos letivos.
+- Registro, edição e aprovação de disponibilidades docentes.
+- Geração automática de propostas de horário, respeitando disponibilidades, turnos e recursos.
+- Diagnóstico de conflitos e aulas não alocadas.
+- Edição manual de aulas em versões ainda não publicadas.
+- Publicação de grade completa e arquivamento da versão publicada anteriormente.
+- Consulta de horários conforme o perfil de acesso.
+- Relatório geral e exportação de informações em CSV e PDF.
+- Histórico de alterações e validações de segurança no backend.
 
-```
-backend/    API REST (Express), scripts e testes
-frontend/   Interface (Parte 2)
-sql/        Esquema, dados de teste e RLS
-docs/       Requisitos, regras de negócio, DER, contrato da API, plano de testes
-```
+## Tecnologias
 
-Documentação: [requisitos](docs/requisitos.md), [regras de negócio](docs/regras-negocio.md), [banco de dados e DER](docs/banco-de-dados.md), [contrato da API](docs/api-contrato.md), [plano de testes](docs/plano-de-testes.md), [divisão de tarefas](docs/divisao-de-tarefas.md).
-
-## Situação
-
-| Parte | Estado |
+| Camada | Tecnologias |
 |---|---|
-| Banco, autenticação, permissões, cadastros, disponibilidades, consulta de horários, relatório, testes | Concluída (Parte 1) |
-| Algoritmo de geração, rotas de versões, conflitos e publicação, frontend completo, testes e validação | Concluída (Parte 2) |
+| Frontend | React, Vite, React Router |
+| Backend | Node.js, Express 5 |
+| Banco de dados | PostgreSQL (Supabase) |
+| Autenticação | Supabase Auth |
+| Validação | Zod |
+| Testes backend | Node Test Runner, Supertest e PGlite |
+| Deploy previsto/documentado | Frontend: Vercel; API: Render; banco/autenticação: Supabase |
 
-## Como executar
+## Estrutura do repositório
 
-Pré-requisitos: Node.js 18 ou superior e um projeto no Supabase.
+```text
+backend/    API REST, integração Supabase, scripts e testes
+frontend/   aplicação React/Vite
+sql/        esquema, dados fictícios e configuração de RLS
+docs/       requisitos, regras de negócio, DER, contrato da API e plano de testes
+```
 
-### 1. Supabase
+Documentação complementar:
+- [Requisitos](docs/requisitos.md)
+- [Regras de negócio](docs/regras-negocio.md)
+- [Banco de dados e DER](docs/banco-de-dados.md)
+- [Contrato da API](docs/api-contrato.md)
+- [Plano de testes e evidências](docs/plano-de-testes.md)
+- [Roteiro de demonstração](docs/roteiro-demonstracao.md)
 
-1. Crie um projeto em supabase.com.
-2. Em **Project Settings > API**, copie a URL, a chave `anon` e a chave `service_role`.
-3. Em **Project Settings > Database**, copie a connection string do **Session pooler** (porta 5432). O Render usa IPv4, então prefira o pooler.
-4. Em **Authentication > Providers > Email**, mantenha o login por e-mail e senha ativo.
+## Pré-requisitos
 
-### 2. Backend local
+- Node.js 20.19+ ou 22.12+, conforme os requisitos da versão atual do Vite.
+- npm.
+- Projeto Supabase com PostgreSQL e Authentication habilitados.
+- Acesso às credenciais do projeto Supabase.
 
-```bash
+## Configuração local
+
+### 1. Backend
+
+No terminal:
+
+```powershell
 cd backend
-cp .env.example .env        # preencha com os dados do Supabase
-npm install
-npm run db:schema           # cria tabelas e ativa o RLS
-npm run db:seed             # dados fictícios
-npm run seed:auth           # cria as contas no Supabase Auth
-npm start                   # http://localhost:3000/api/health
+Copy-Item .env.example .env
 ```
 
-Se precisar recomeçar: `npm run db:reset`, depois `db:schema`, `db:seed` e `seed:auth` (remova antes as contas antigas em Authentication > Users).
+Preencha o arquivo `backend/.env` com as credenciais do seu projeto Supabase:
 
-Contas de teste (senha igual a `SEED_PASSWORD`): `coordenacao@sucelso.tech`, `ana.souza@sucelso.tech` (professora), `aluno.a1@sucelso.tech` (aluno). A lista completa está em [banco-de-dados.md](docs/banco-de-dados.md).
-
-### 3. Testes
-
-```bash
-cd backend && npm test
-```
-
-Os testes não precisam do Supabase nem de `.env`.
-
-### 4. Deploy do backend no Render
-
-| Campo | Valor |
+| Variável | Finalidade |
 |---|---|
-| Root Directory | `backend` |
-| Build Command | `npm install` |
-| Start Command | `npm start` |
-| Variáveis | `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CORS_ORIGINS` (URL do frontend na Vercel), `NODE_ENV=production` |
+| `NODE_ENV` | Ambiente; use `development` localmente. |
+| `PORT` | Porta HTTP da API (padrão: 3000). |
+| `DATABASE_URL` | Connection string PostgreSQL do Supabase. |
+| `SUPABASE_URL` | URL do projeto Supabase. |
+| `SUPABASE_ANON_KEY` | Chave pública anon, usada pelo backend para login/refresh. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Chave administrativa usada exclusivamente no backend. |
+| `CORS_ORIGINS` | Origens permitidas, separadas por vírgula. |
+| `SEED_PASSWORD` | Senha temporária para criação das contas fictícias de demonstração. |
 
-No plano gratuito o serviço suspende por inatividade, e a primeira resposta pode demorar.
+**Nunca versione o arquivo `.env` nem compartilhe a chave `SUPABASE_SERVICE_ROLE_KEY`.** Essa chave não deve existir no frontend.
 
-### 5. Deploy do frontend na Vercel (Parte 2)
+Instale as dependências:
 
-Publique a pasta `frontend/` e configure a URL do backend. O frontend nunca recebe a chave `service_role`. Para login, basta chamar `POST /api/auth/login` e enviar o `access_token` no cabeçalho `Authorization: Bearer`.
+```powershell
+npm install
+```
+
+#### Banco de dados novo (somente ambiente vazio/de demonstração)
+
+Se estiver preparando um projeto Supabase novo e vazio, execute nesta ordem:
+
+```powershell
+npm run db:schema
+npm run db:seed
+npm run seed:auth
+```
+
+- `db:schema`: cria as tabelas, restrições e ativa RLS.
+- `db:seed`: insere dados fictícios de demonstração.
+- `seed:auth`: cria/vincula as contas de demonstração no Supabase Auth; pode ser executado novamente.
+
+**Atenção:** não execute `npm run db:reset` em um banco com dados que deseja preservar. Esse comando apaga tabelas. Não execute novamente `db:seed` em um ambiente já preparado sem antes avaliar o impacto.
+
+#### Iniciar a API
+
+```powershell
+npm run dev
+```
+
+A API ficará disponível, por padrão, em `http://localhost:3000`. Verifique:
+
+```text
+GET http://localhost:3000/api/health
+```
+
+A resposta esperada é um JSON com `status: "ok"`.
+
+### 2. Frontend
+
+Em outro terminal:
+
+```powershell
+cd frontend
+npm install
+```
+
+Crie `frontend/.env.local` com a URL base da API:
+
+```dotenv
+VITE_API_URL=http://localhost:3000/api
+```
+
+Inicie a interface:
+
+```powershell
+npm run dev
+```
+
+O Vite informa no terminal o endereço local, normalmente `http://localhost:5173`.
+
+### 3. Contas de demonstração
+
+Depois de preparar o banco e executar `seed:auth`, as contas de demonstração usam a senha definida em `SEED_PASSWORD`.
+
+| Perfil | E-mail |
+|---|---|
+| Coordenador | `coordenacao@sucelso.tech` |
+| Professora | `ana.souza@sucelso.tech` |
+| Aluno da Turma A | `aluno.a1@sucelso.tech` |
+
+A relação completa das contas fictícias está em [banco-de-dados.md](docs/banco-de-dados.md). Altere a senha de demonstração antes de qualquer uso fora de um ambiente de teste.
+
+## Testes e verificações
+
+### Backend
+
+```powershell
+cd backend
+npm test
+```
+
+Resultado validado nesta etapa: **87 testes aprovados, 0 falhas**. Os testes automatizados usam PGlite e autenticação simulada; não exigem conexão com o Supabase.
+
+### Frontend
+
+```powershell
+cd frontend
+npm run lint
+npm run build
+```
+
+Lint e build foram executados com sucesso na validação do projeto.
+
+Consulte [plano-de-testes.md](docs/plano-de-testes.md) para cenários automatizados e verificações manuais.
+
+## Perfis e regras principais
+
+| Perfil | Permissões principais |
+|---|---|
+| Coordenador | Gerencia cadastros, consulta relatórios, aprova disponibilidades, gera/edita versões e publica grades. |
+| Professor | Consulta sua grade e suas turmas; registra e administra somente as próprias disponibilidades. |
+| Aluno | Consulta apenas a grade publicada da própria turma. |
+
+A grade só se torna oficial após publicação pelo coordenador. Alunos e professores não visualizam rascunhos. Alterações de disponibilidade após a publicação ficam pendentes e não modificam a grade oficial automaticamente.
 
 ## Segurança
 
-- A chave `service_role` e a senha do banco ficam apenas no backend, em variáveis de ambiente. O `.env` está no `.gitignore`.
-- O perfil do usuário vem da tabela `usuarios`, e cada rota valida a permissão no servidor.
-- RLS ativo em todas as tabelas, sem políticas: a API pública do Supabase não acessa os dados.
-- Entradas validadas com zod, consultas parametrizadas, helmet, CORS restrito e limite de requisições.
+- Tokens de acesso são validados pelo Supabase Auth no backend.
+- O perfil e o estado ativo são consultados no banco; o cliente não define seu próprio perfil.
+- Rotas administrativas exigem autorização de coordenador.
+- Entradas são validadas; consultas SQL usam parâmetros.
+- Helmet, CORS configurável, rate limiting e limite de corpo JSON estão habilitados.
+- Erros internos são registrados no servidor e respondidos sem detalhes sensíveis.
+- RLS está habilitado nas tabelas; o acesso aos dados é realizado pela API backend.
 
-## Para a Parte 2
+## Deploy
 
-- Adicione as rotas em `backend/src/routes/horarios.js` (o router já exige autenticação). Use `somenteCoordenador` e `registrarHistorico`.
-- Use o banco como rede de segurança: aulas conflitantes de professor, sala ou turma na mesma versão são rejeitadas (409).
-- Mantenha os testes de `backend/test/seguranca.test.js`, que já cobrem as rotas da Parte 2 e passam a exigir 403 para aluno e professor quando elas existirem.
+A arquitetura documentada permite publicar a API no Render, o frontend na Vercel e manter banco/autenticação no Supabase.
+
+- **Render (backend):** Root Directory `backend`; Build Command `npm install`; Start Command `npm start`. Configure as variáveis de ambiente listadas acima.
+- **Vercel (frontend):** Root Directory `frontend`; configure `VITE_API_URL` com a URL pública da API, incluindo `/api`.
+- **CORS:** inclua a origem pública exata do frontend em `CORS_ORIGINS` no backend.
+
+O deploy em produção deve ser validado separadamente; os testes locais e as verificações manuais realizadas não significam, por si só, que um ambiente de produção esteja publicado.
+
+## Estado da validação
+
+- Fluxos de coordenador, professor e aluno testados manualmente.
+- Grade do período letivo `2026.2` publicada e consultada pelos perfis correspondentes.
+- Relatórios e exportações CSV/PDF testados.
+- Frontend: lint e build aprovados.
+- Backend: 87/87 testes automatizados aprovados.
+- Revisão estática de autenticação, autorização, RPC de perfil, rotas, configuração HTTP e tratamento de erros concluída.
+

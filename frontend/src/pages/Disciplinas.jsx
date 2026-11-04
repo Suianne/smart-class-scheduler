@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import {
   listarDisciplinas,
@@ -24,8 +24,7 @@ export default function Disciplinas() {
     carga_horaria: 80,
   });
 
-  async function carregar() {
-    setCarregando(true);
+  const carregar = useCallback(async () => {
     try {
       const dados = await listarDisciplinas();
       setDisciplinas(Array.isArray(dados) ? dados : dados.disciplinas || []);
@@ -35,10 +34,27 @@ export default function Disciplinas() {
     } finally {
       setCarregando(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    carregar();
+    let ativo = true;
+
+    listarDisciplinas()
+      .then((dados) => {
+        if (!ativo) return;
+        setDisciplinas(Array.isArray(dados) ? dados : dados.disciplinas || []);
+        setErro('');
+      })
+      .catch((err) => {
+        if (ativo) setErro(err.message);
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
   }, []);
 
   async function handleCadastrar(e) {

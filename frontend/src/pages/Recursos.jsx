@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import {
   listarSalas,
@@ -24,8 +24,7 @@ export default function Recursos() {
     capacidade: 40,
   });
 
-  async function carregarTodos() {
-    setCarregando(true);
+  const carregarTodos = useCallback(async () => {
     try {
       const [dSalas, dTurnos, dPeriodos] = await Promise.all([
         listarSalas(),
@@ -40,10 +39,32 @@ export default function Recursos() {
     } finally {
       setCarregando(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    carregarTodos();
+    let ativo = true;
+
+    Promise.all([
+      listarSalas(),
+      listarTurnos(),
+      listarPeriodosLetivos(),
+    ])
+      .then(([dSalas, dTurnos, dPeriodos]) => {
+        if (!ativo) return;
+        setSalas(Array.isArray(dSalas) ? dSalas : dSalas.salas || []);
+        setTurnos(Array.isArray(dTurnos) ? dTurnos : dTurnos.turnos || []);
+        setPeriodos(Array.isArray(dPeriodos) ? dPeriodos : dPeriodos.periodos || []);
+      })
+      .catch((err) => {
+        if (ativo) setMensagem({ tipo: 'erro', texto: err.message });
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
   }, []);
 
   async function handleCadastrarSala(e) {

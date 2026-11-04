@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import {
   obterHorarioMinhaTurma,
@@ -29,6 +29,7 @@ export default function Horarios() {
 
   const [aulas, setAulas] = useState([]);
   const [versao, setVersao] = useState(null);
+  const [versaoIdSelecionada, setVersaoIdSelecionada] = useState(null);
   const [turmas, setTurmas] = useState([]);
   const [professores, setProfessores] = useState([]);
   const [salas, setSalas] = useState([]);
@@ -80,8 +81,7 @@ export default function Horarios() {
   }, [perfil]);
 
   // Função para buscar horários
-  async function carregarGrade() {
-    setCarregando(true);
+  const carregarGrade = useCallback(async (versaoId = versaoIdSelecionada) => {
     try {
       if (perfil === 'aluno') {
         const dados = await obterHorarioMinhaTurma();
@@ -94,11 +94,11 @@ export default function Horarios() {
         setTurmasAtribuidas(dados.turmas_atribuidas || []);
       } else if (perfil === 'coordenador') {
         if (tipoVisualizacao === 'turma' && turmaSelecionada) {
-          const dados = await obterHorarioMinhaTurma({ turma_id: turmaSelecionada });
+          const dados = await obterHorarioMinhaTurma({ turma_id: turmaSelecionada, versao_id: versaoId || undefined });
           setAulas(dados.aulas || []);
           setVersao(dados.versao);
         } else if (tipoVisualizacao === 'professor' && professorSelecionado) {
-          const dados = await obterHorarioProfessor({ professor_id: professorSelecionado });
+          const dados = await obterHorarioProfessor({ professor_id: professorSelecionado, versao_id: versaoId || undefined });
           setAulas(dados.aulas || []);
           setVersao(dados.versao);
           setTurmasAtribuidas(dados.turmas_atribuidas || []);
@@ -111,11 +111,51 @@ export default function Horarios() {
     } finally {
       setCarregando(false);
     }
-  }
+  }, [perfil, tipoVisualizacao, turmaSelecionada, professorSelecionado, versaoIdSelecionada]);
 
   useEffect(() => {
-    carregarGrade();
-  }, [perfil, tipoVisualizacao, turmaSelecionada, professorSelecionado]);
+    let ativo = true;
+    let requisicao = Promise.resolve(null);
+
+    if (perfil === 'aluno') {
+      requisicao = obterHorarioMinhaTurma();
+    } else if (perfil === 'professor') {
+      requisicao = obterHorarioProfessor();
+    } else if (perfil === 'coordenador' && tipoVisualizacao === 'turma' && turmaSelecionada) {
+      requisicao = obterHorarioMinhaTurma({
+        turma_id: turmaSelecionada,
+        versao_id: versaoIdSelecionada || undefined,
+      });
+    } else if (perfil === 'coordenador' && tipoVisualizacao === 'professor' && professorSelecionado) {
+      requisicao = obterHorarioProfessor({
+        professor_id: professorSelecionado,
+        versao_id: versaoIdSelecionada || undefined,
+      });
+    }
+
+    requisicao
+      .then((dados) => {
+        if (!ativo || !dados) return;
+        setAulas(dados.aulas || []);
+        setVersao(dados.versao);
+        if (perfil === 'professor' || tipoVisualizacao === 'professor') {
+          setTurmasAtribuidas(dados.turmas_atribuidas || []);
+        }
+      })
+      .catch((err) => {
+        if (!ativo) return;
+        setAulas([]);
+        setVersao(null);
+        setMensagem({ tipo: 'erro', texto: err.message });
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [perfil, tipoVisualizacao, turmaSelecionada, professorSelecionado, versaoIdSelecionada]);
 
   // Horários únicos presentes nas aulas (para linhas da tabela)
   const slotsHorarios = useMemo(() => {
@@ -141,7 +181,8 @@ export default function Horarios() {
           res.nao_alocadas?.length > 0 ? `${res.nao_alocadas.length} pendências de alocação.` : ''
         }`,
       });
-      await carregarGrade();
+      setVersaoIdSelecionada(res.versao.id);
+      await carregarGrade(res.versao.id);
     } catch (err) {
       setMensagem({ tipo: 'erro', texto: err.message });
     } finally {
@@ -173,8 +214,9 @@ export default function Horarios() {
     setProcessando(true);
     try {
       await publicarVersao(versao.id);
+      setVersaoIdSelecionada(null);
       setMensagem({ tipo: 'sucesso', texto: 'Grade publicada com sucesso! Agora está oficial para todos os alunos e professores.' });
-      await carregarGrade();
+      await carregarGrade(null);
     } catch (err) {
       setMensagem({ tipo: 'erro', texto: 'Não foi possível publicar: ' + err.message });
     } finally {
@@ -320,7 +362,7 @@ export default function Horarios() {
             </thead>
             <tbody>
               {slotsHorarios.map((slot) => {
-                const [hInicio, hFim] = slot.split(' - ');
+                const [hInicio] = slot.split(' - ');
                 return (
                   <tr key={slot}>
                     <td className="celula-horario">{slot}</td>

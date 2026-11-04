@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import {
   listarDisponibilidades,
@@ -59,8 +59,7 @@ export default function Disponibilidades() {
     }
   }, [perfil]);
 
-  async function carregarDados() {
-    setCarregando(true);
+  const carregarDados = useCallback(async () => {
     setMensagem(null);
     try {
       if (perfil === 'coordenador' && abaAtiva === 'pendentes') {
@@ -79,11 +78,38 @@ export default function Disponibilidades() {
     } finally {
       setCarregando(false);
     }
-  }
+  }, [perfil, abaAtiva, filtroProf]);
 
   useEffect(() => {
-    carregarDados();
-  }, [abaAtiva, filtroProf]);
+    let ativo = true;
+    const requisicao = perfil === 'coordenador' && abaAtiva === 'pendentes'
+      ? listarDisponibilidadesPendentes()
+      : listarDisponibilidades(
+          perfil === 'coordenador' && filtroProf
+            ? { professor_id: filtroProf }
+            : {}
+        );
+
+    requisicao
+      .then((dados) => {
+        if (!ativo) return;
+        if (perfil === 'coordenador' && abaAtiva === 'pendentes') {
+          setPendentes(Array.isArray(dados) ? dados : []);
+        } else {
+          setDisponibilidades(Array.isArray(dados) ? dados : []);
+        }
+      })
+      .catch((err) => {
+        if (ativo) setMensagem({ tipo: 'erro', texto: err.message });
+      })
+      .finally(() => {
+        if (ativo) setCarregando(false);
+      });
+
+    return () => {
+      ativo = false;
+    };
+  }, [perfil, abaAtiva, filtroProf]);
 
   async function handleCadastrar(e) {
     e.preventDefault();
