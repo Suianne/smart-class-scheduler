@@ -1,25 +1,25 @@
-﻿import {
+import {
   BrowserRouter,
   Navigate,
   Route,
   Routes,
 } from 'react-router-dom';
 
-import Professores from './pages/Professores';
 import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Professores from './pages/Professores';
+import Alunos from './pages/Alunos';
+import Turmas from './pages/Turmas';
+import Disciplinas from './pages/Disciplinas';
+import Recursos from './pages/Recursos';
+import Disponibilidades from './pages/Disponibilidades';
+import Horarios from './pages/Horarios';
+import Relatorios from './pages/Relatorios';
+
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
 
 import './App.css';
-
-function PaginaProvisoria({ titulo }) {
-  return (
-    <section>
-      <h2>{titulo}</h2>
-      <p>Esta funcionalidade será implementada nas próximas etapas.</p>
-    </section>
-  );
-}
 
 function App() {
   return (
@@ -36,18 +36,15 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route
-            index
-            element={<PaginaProvisoria titulo="Dashboard do Coordenador" />}
-          />
+          <Route index element={<Dashboard />} />
           <Route path="professores" element={<Professores />} />
-          <Route path="alunos" element={<PaginaProvisoria titulo="Alunos" />} />
-          <Route path="turmas" element={<PaginaProvisoria titulo="Turmas" />} />
-          <Route path="disciplinas" element={<PaginaProvisoria titulo="Disciplinas" />} />
-          <Route path="recursos" element={<PaginaProvisoria titulo="Salas e turnos" />} />
-          <Route path="disponibilidades" element={<PaginaProvisoria titulo="Disponibilidades" />} />
-          <Route path="horarios" element={<PaginaProvisoria titulo="Horários" />} />
-          <Route path="relatorios" element={<PaginaProvisoria titulo="Relatórios" />} />
+          <Route path="alunos" element={<Alunos />} />
+          <Route path="turmas" element={<Turmas />} />
+          <Route path="disciplinas" element={<Disciplinas />} />
+          <Route path="recursos" element={<Recursos />} />
+          <Route path="disponibilidades" element={<Disponibilidades />} />
+          <Route path="horarios" element={<Horarios />} />
+          <Route path="relatorios" element={<Relatorios />} />
         </Route>
 
         {/* Área do professor */}
@@ -59,13 +56,10 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route
-            index
-            element={<PaginaProvisoria titulo="Dashboard do Professor" />}
-          />
-          <Route path="horarios" element={<PaginaProvisoria titulo="Minha grade" />} />
-          <Route path="disponibilidades" element={<PaginaProvisoria titulo="Disponibilidades" />} />
-          <Route path="recursos" element={<PaginaProvisoria titulo="Recursos acadêmicos" />} />
+          <Route index element={<Dashboard />} />
+          <Route path="horarios" element={<Horarios />} />
+          <Route path="disponibilidades" element={<Disponibilidades />} />
+          <Route path="recursos" element={<Recursos />} />
         </Route>
 
         {/* Área do aluno */}
@@ -77,12 +71,9 @@ function App() {
             </ProtectedRoute>
           }
         >
-          <Route
-            index
-            element={<PaginaProvisoria titulo="Dashboard do Aluno" />}
-          />
-          <Route path="horarios" element={<PaginaProvisoria titulo="Minha grade" />} />
-          <Route path="recursos" element={<PaginaProvisoria titulo="Recursos acadêmicos" />} />
+          <Route index element={<Dashboard />} />
+          <Route path="horarios" element={<Horarios />} />
+          <Route path="recursos" element={<Recursos />} />
         </Route>
 
         <Route path="/" element={<Navigate to="/login" replace />} />

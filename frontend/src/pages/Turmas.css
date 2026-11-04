@@ -1,0 +1,253 @@
+﻿.turmas-page {
+  width: 100%;
+}
+
+.turmas-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 26px;
+}
+
+.turmas-topo h2 {
+  margin: 0;
+  color: #17243a;
+  font-size: 20px;
+}
+
+.turmas-topo p {
+  margin: 7px 0 0;
+  color: #7b8798;
+  font-size: 13px;
+}
+
+.turmas-tabela-container {
+  overflow: hidden;
+  border: 1px solid #e5eaf1;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.turmas-resumo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5eaf1;
+  color: #43536a;
+  font-size: 13px;
+}
+
+.turmas-resumo strong {
+  color: #142d50;
+  font-size: 20px;
+}
+
+.turmas-tabela-scroll {
+  overflow-x: auto;
+}
+
+.turmas-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.turmas-tabela th {
+  padding: 15px 24px;
+  background: #f8fafd;
+  color: #7b8798;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.turmas-tabela td {
+  padding: 17px 24px;
+  border-top: 1px solid #edf0f5;
+  color: #43536a;
+  font-size: 13px;
+}
+
+.turmas-tabela td:first-child {
+  color: #17243a;
+  font-weight: 600;
+}
+
+.turmas-feedback {
+  padding: 24px;
+  color: #7b8798;
+  font-size: 13px;
+}
+
+.turmas-erro {
+  padding: 20px;
+  border: 1px solid #f1caca;
+  border-radius: 8px;
+  background: #fff5f5;
+  color: #a33333;
+  font-size: 13px;
+}
+
+.turmas-erro p {
+  margin-bottom: 0;
+}
+
+@media (max-width: 600px) {
+  .turmas-topo {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 18px;
+  }
+}
+
+.turmas-botao-nova,
+.turmas-botao-salvar {
+  border: none;
+  border-radius: 7px;
+  padding: 11px 18px;
+  background: #142d50;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.turmas-botao-nova:hover,
+.turmas-botao-salvar:hover {
+  background: #203f69;
+}
+
+.turmas-botao-salvar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.turmas-formulario {
+  margin-bottom: 24px;
+  padding: 24px;
+  border: 1px solid #e5eaf1;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.turmas-formulario h3 {
+  margin: 0 0 20px;
+  color: #17243a;
+  font-size: 16px;
+}
+
+.turmas-formulario-campos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.turmas-formulario-campos label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #43536a;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.turmas-formulario-campos input,
+.turmas-formulario-campos select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid #dce3ec;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #17243a;
+  font-size: 13px;
+}
+
+.turmas-formulario-campos input:focus,
+.turmas-formulario-campos select:focus {
+  outline: none;
+  border-color: #5279aa;
+}
+
+.turmas-formulario-campos input[readonly] {
+  background: #f5f7fa;
+}
+
+.turmas-sucesso {
+  margin-bottom: 18px;
+  padding: 14px 18px;
+  border: 1px solid #cce8d5;
+  border-radius: 7px;
+  background: #f1faf4;
+  color: #287344;
+  font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .turmas-formulario-campos {
+    grid-template-columns: 1fr;
+  }
+}
+
+.turmas-formulario-acoes {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.turmas-botao-cancelar {
+  padding: 11px 18px;
+  border: 1px solid #dce3ec;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #43536a;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.turmas-botao-editar {
+  padding: 7px 13px;
+  border: 1px solid #dce3ec;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #142d50;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.turmas-botao-editar:hover {
+  background: #f0f4f9;
+}
+
+/* Ações da tabela de turmas */
+.turmas-acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.turmas-botao-excluir {
+  padding: 7px 12px;
+  border: 1px solid #dc2626;
+  border-radius: 6px;
+  background: #fff;
+  color: #dc2626;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.turmas-botao-excluir:hover:not(:disabled) {
+  background: #fef2f2;
+}
+
+.turmas-botao-excluir:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

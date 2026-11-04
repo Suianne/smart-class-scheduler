@@ -1,0 +1,131 @@
+.disp-page {
+  padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.disp-topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.disp-topo h2 {
+  margin: 0 0 0.25rem 0;
+  color: #1e293b;
+  font-size: 1.75rem;
+}
+
+.disp-topo p {
+  margin: 0;
+  color: #64748b;
+}
+
+.disp-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.disp-tab-btn {
+  padding: 0.75rem 1.25rem;
+  background: none;
+  border: none;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+}
+
+.disp-tab-btn.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+}
+
+.disp-grid-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 900px) {
+  .disp-grid-container.com-form {
+    grid-template-columns: 350px 1fr;
+  }
+}
+
+.disp-card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.disp-card h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.15rem;
+  color: #0f172a;
+}
+
+.disp-tabela {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.disp-tabela th {
+  text-align: left;
+  padding: 0.75rem;
+  background-color: #f8fafc;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.disp-tabela td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-aprovada { background: #dcfce7; color: #166534; }
+.status-pendente { background: #fef3c7; color: #92400e; }
+.status-substituida { background: #f1f5f9; color: #64748b; }
+.status-rejeitada { background: #fee2e2; color: #991b1b; }
+
+.btn-tabela {
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  margin-right: 0.4rem;
+  transition: all 0.2s;
+}
+
+.btn-aprovar { background: #059669; color: white; }
+.btn-aprovar:hover { background: #047857; }
+
+.btn-rejeitar { background: #ef4444; color: white; }
+.btn-rejeitar:hover { background: #dc2626; }
+
+.btn-excluir { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+.btn-excluir:hover { background: #fee2e2; color: #ef4444; }
