@@ -44,3 +44,4 @@ export function consultarConflitos(params = {}) {
   const qs = query.toString();
   return requisicao(`/horarios/conflitos${qs ? `?${qs}` : ''}`);
 }
+

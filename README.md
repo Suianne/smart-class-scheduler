@@ -24,7 +24,7 @@ Documentação: [requisitos](docs/requisitos.md), [regras de negócio](docs/regr
 | Parte | Estado |
 |---|---|
 | Banco, autenticação, permissões, cadastros, disponibilidades, consulta de horários, relatório, testes | Concluída (Parte 1) |
-| Algoritmo de geração, rotas de versões e publicação, frontend, deploy | Pendente (Parte 2) |
+| Algoritmo de geração, rotas de versões, conflitos e publicação, frontend completo, testes e validação | Concluída (Parte 2) |
 
 ## Como executar
 

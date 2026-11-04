@@ -31,3 +31,4 @@ export function listarTurnos() {
 export function listarPeriodosLetivos() {
   return requisicao('/periodos-letivos');
 }
+
