@@ -50,7 +50,9 @@ Os testes usam o PostgreSQL real em memória (PGlite) carregado com os mesmos sc
 | Força bruta no login | 32 tentativas em sequência | 429 |
 | Conta desativada | Acesso e login | 403 |
 | Exposição de chaves | `SUPABASE_SERVICE_ROLE_KEY` aparece apenas em arquivos do backend | Conferido por busca no repositório |
-| Dependências | `npm audit --omit=dev` | Verificação pendente antes do deploy de produção. |
+| Dependências | `npm audit` no backend e no frontend (04/11/2026) | **0 vulnerabilidades reportadas em cada projeto.** |
+
+A auditoria de dependências foi executada separadamente nas pastas `backend` e `frontend`. Ambos os comandos terminaram com `found 0 vulnerabilities`. Esse resultado cobre vulnerabilidades conhecidas nas dependências reportadas pelo npm; não substitui revisão de código, auditoria de políticas RLS ou teste de penetração.
 
 ## 4. Verificações manuais após o deploy
 
