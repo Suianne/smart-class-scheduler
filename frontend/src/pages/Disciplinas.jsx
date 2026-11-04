@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import {
   listarDisciplinas,
@@ -24,7 +24,8 @@ export default function Disciplinas() {
     carga_horaria: 80,
   });
 
-  async function carregar() {
+  const carregar = useCallback(async () => {
+    await Promise.resolve();
     setCarregando(true);
     try {
       const dados = await listarDisciplinas();
@@ -35,11 +36,11 @@ export default function Disciplinas() {
     } finally {
       setCarregando(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     carregar();
-  }, []);
+  }, [carregar]);
 
   async function handleCadastrar(e) {
     e.preventDefault();
