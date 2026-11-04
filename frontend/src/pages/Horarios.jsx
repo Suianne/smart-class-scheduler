@@ -13,7 +13,7 @@ import { listarProfessores } from '../services/professores';
 import { listarSalas } from '../services/recursos';
 import './Horarios.css';
 
-const DIAS_SEMANA = ['segunda', 'terca', 'quarta', 'quinta', 'sexta'];
+const DIAS_SEMANA = ['segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
 const ROTULO_DIAS = {
   segunda: 'Segunda-feira',
   terca: 'Terça-feira',
